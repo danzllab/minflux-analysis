@@ -1,0 +1,12 @@
+font.family : arial
+mathtext.fontset : custom
+mathtext.bf : arial:bold
+mathtext.bfit : arial:italic:bold
+mathtext.it : arial:italic
+mathtext.rm : arial
+mathtext.sf : arial
+pdf.fonttype : 42   #required to make font editable in Illustrator
+axes.formatter.use_mathtext : True      # improved tick formatting (x10^A instead of 1eA)
+# import locale
+# locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+axes.formatter.use_locale : True 	# inserts thousands separator
