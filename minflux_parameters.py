@@ -26,16 +26,16 @@ class MinfluxParameters:
         self.d_grid = 0
         self.n_grid = 1
        
-        self.estimator = 'lms'
+        self.estimator = 'mle'
         self.filter_type = 'box'
         self.subtract_bg = False
         self.subtract_drifts = -1
         
-        self.count_threshold = [35, 70]
+        self.count_threshold = [25, 65]
         self.t_threshold = 0.05
         self.variation_threshold = 0.15 
-        self.cfr_max = 0.7
-        self.t_filter = 50
+        self.cfr_max = 0.5
+        self.t_filter = 45
         self.k_bin = 1
         self.n_photon = 4000
         

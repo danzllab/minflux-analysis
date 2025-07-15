@@ -48,7 +48,7 @@ def localization(psf=None):
     else:
         # counts_bg_subtracted = [c - bg for c, bg in zip(mfxloc.counts_raw, mfxloc.counts_background)]
         events_binned = mfxloc.bin_emission_events(counts=mfxloc.counts_raw, n_bin=mfxparam.n_photon)
-        loc = mfxloc.estimate_position(counts_thresh=events_binned, estimator=mfxparam.estimator)
+        loc = mfxloc.estimate_position(counts_thresh=events_binned, estimator=mfxparam.estimator, estimator_param={'plot_p': True})
         
     # loc = [loc_exp[::30] for loc_exp in loc]
     # loc = mfxloc.crop_localizations(-10, -3, -7, 0, localizations=loc)
@@ -73,11 +73,11 @@ def visualization(save_plots=False):
     # mfxvis.plot_count_traces(counts=mfxdata.counts_processed)
     # mfxvis.plot_count_histogram(d_bins=1, log=True)
     
-    mfxvis.plot_localizations_scatter(localizations=mfxdata.localizations, show_lines=True, color_code='time')
+    mfxvis.plot_localizations_scatter(localizations=mfxdata.localizations, show_lines=False, color_code='tile')
     # mfxvis.plot_localizations_histogram(localizations=mfxdata.localizations, 
     #                                   px_size = 0.5, shift_hist=True)
-    # mfxvis.plot_localizations_gauss(localizations=mfxdata.localizations, 
-    #                                 sigma=0.5, px_size = 0.2)
+    mfxvis.plot_localizations_gauss(localizations=mfxdata.localizations, 
+                                    sigma=1, px_size = 0.2)
     if hasattr(mfxloc, 'p_drift'):
         p_drift = mfxloc.p_drift
     else:
@@ -118,7 +118,7 @@ def main():
 #%%
 if __name__ == '__main__':
     main()
-    sample_type = 'bead'
+    sample_type = 'blink'
     save_plots = '.pdf'
     
     mfxparam = MinfluxParameters(sample_type)
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     
     #%%
     psf_model = PSFmodel('doughnut', mfxparam)
-    psf_model.create_psf_model(300, 0.5)
+    psf_model.create_psf_model(200, 0.2)
     
     mfxloc = localization(psf=psf_model)
     

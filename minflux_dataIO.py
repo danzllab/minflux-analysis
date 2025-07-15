@@ -12,7 +12,7 @@ from minflux_parameters import MinfluxParameters
 
 class DataMinflux:
     
-    def __init__(self, parameters, n_cols=7, cols_counts=[0, 4], n_read=-1, offset=1080):
+    def __init__(self, parameters, n_cols=7, cols_counts=[0, 4], n_read=-1, offset=1486):
         
         ## offsets for datasets:
         # 20221223_0201: 1486

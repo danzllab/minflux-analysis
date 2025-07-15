@@ -307,7 +307,7 @@ class MinfluxLocalization2D:
         return arr[x0:x0+size_x, y0:y0+size_y]
     
     
-    def MLE_numeric(self, counts, plot_p=True, ind_exp=0):
+    def MLE_numeric(self, counts, plot_p=False, ind_exp=0):
         '''numeric MLE for arbitrary pattern (beam_shape() must have shape_param and center as 1st and 2nd arguments)'''
         if not hasattr(self.data, 'target_coordinates'):
             self.data.create_target_coordinates()
@@ -340,7 +340,7 @@ class MinfluxLocalization2D:
                     fig, ax = plt.subplots(1, 5, num=self.plot_ind, clear=True)
                     self.plot_ind += 1
                     for j in range(len(p_grid)):
-                        ax[j].imshow(self.p_log_grid[j])
+                        ax[j].imshow(self.p_log_grid[j], cmap='cividis')#, vmin=np.min(self.p_log_grid), vmax=np.max(self.p_log_grid))
                 
             # # log_l = sum([counts[i]*np.log(p[i]) for i in range(len(counts))])
             # log_l = np.tensordot(counts[i], self.p_log_grid, axes=(0,0))     #compute log-likelihood function sum(n_i*ln(p_i))
@@ -364,8 +364,15 @@ class MinfluxLocalization2D:
             l_argmax = np.nonzero(log_l == np.nanmax(log_l))
             r_list.append([l_argmax[1][0], l_argmax[0][0]])
             
-            if plot_p and (i == 100): 
-                ax[-1].imshow(log_l)
+            if plot_p and (i == 500):
+                print(counts[i])
+                ax[-1].imshow(log_l, cmap='cividis')
+                ax[-1].scatter(l_argmax[1][0], l_argmax[0][0], color='k')
+                for a in ax:
+                    a.set_xticks([])
+                    a.set_yticks([])
+                plt.tight_layout()
+                fig.savefig('log-likelihood.pdf', transparent=True)
  
         r_arr = np.asarray(r_list)
         r_arr = r_arr * self.psf_data.px_size - self.psf_data.grid_size/2 + self.parameters.L/2
