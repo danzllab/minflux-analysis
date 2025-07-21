@@ -18,42 +18,43 @@ from minflux_analysis import MinfluxAnalysisBeadSample, MinfluxAnalysisBlinkingS
 
 
 
-def load_data(n_read=-1):
+def load_data(mfxparam, n_read=-1):
     t1 = time.time()
     mfxdata = DataMinflux(mfxparam, n_read=n_read)
-    # mfxdata.find_offset()
-    mfxdata.create_grid()
-    mfxdata.create_timestamps()
+    # mfxdata.find_offset()     # find offset corresponding to metadata to discard before reading counts; run if raw data format changes
+    # mfxdata.create_grid()   # create grid of positions of the tip/tilt mirror from given parameters and assign counts to positions/experiments
+    mfxdata.create_timestamps()     # create timestamp for every set of photon counts
     t2 = time.time()
     print('data creation time: ', t2 - t1)
     
     return mfxdata
     
    
-def localization(psf=None):
+def localization(mfxparam, mfxdata, psf=None, plot_mle=False):
     
     t1 = time.time()
     
     mfxloc = MinfluxLocalization2D(mfxparam, mfxdata, psf_data=psf)
-    mfxloc.remove_activation_counts()
-    mfxloc.bin_counts(k_bin=mfxparam.k_bin)
-    mfxloc.filter_counts(mfxparam.filter_type, mfxparam.t_filter)
+    mfxloc.remove_activation_counts()   # remove counts when activation was active based on changed data format
+    mfxloc.bin_counts(k_bin=mfxparam.k_bin)     # bin k_bin subsequent photon counts
+    mfxloc.filter_counts(mfxparam.filter_type, mfxparam.t_filter)   #filter counts to remove noise
     
+    # threshold count traces to extract single-molecule emission events; based on count intensities (lower + upper threshold), on-time, local variance, center frequency ratio (useful for iterative minflux)
     mfxloc.threshold_counts(mfxparam.count_threshold, t_min=mfxparam.t_threshold, counts=None,
                           bin_var=mfxparam.t_filter+1, thresh_var=mfxparam.variation_threshold, 
-                          cfr_max=mfxparam.cfr_max, subtract_background=mfxparam.subtract_bg)
+                          cfr_max=mfxparam.cfr_max, subtract_background=mfxparam.subtract_bg)   # subtract_background not recommended - background should be modeled, not subtracted!
 
-    if mfxparam.n_photon == -1:
+    if mfxparam.n_photon < 0:
         loc = mfxloc.estimate_position(counts_thresh=mfxloc.counts_thresh, estimator=mfxparam.estimator)
     else:
-        # counts_bg_subtracted = [c - bg for c, bg in zip(mfxloc.counts_raw, mfxloc.counts_background)]
         events_binned = mfxloc.bin_emission_events(counts=mfxloc.counts_raw, n_bin=mfxparam.n_photon)
-        loc = mfxloc.estimate_position(counts_thresh=events_binned, estimator=mfxparam.estimator, estimator_param={'plot_p': True})
+        loc = mfxloc.estimate_position(counts_thresh=events_binned, estimator=mfxparam.estimator, estimator_param={'plot_mle': plot_mle})
         
-    # loc = [loc_exp[::30] for loc_exp in loc]
-    # loc = mfxloc.crop_localizations(-10, -3, -7, 0, localizations=loc)
+    # crude filtering of localizations
+    # loc = [loc_exp[::30] for loc_exp in loc]  # for faster plotting
+    # loc = mfxloc.crop_localizations(-10, -3, -7, 0, localizations=loc)    #crop localizations
     
-    if mfxparam.subtract_drifts != -1: loc_corr, p_drift = mfxloc.subtract_drifts_fit(k_fit=mfxparam.subtract_drifts, fit_separate=True)
+    if mfxparam.subtract_drifts >= 0: loc_corr, p_drift = mfxloc.subtract_drifts_fit(k_fit=mfxparam.subtract_drifts, fit_separate=True)
     else: loc_corr, p_drift = None, None
     
     mfxdata.get_localization_data(mfxloc)
@@ -64,25 +65,36 @@ def localization(psf=None):
     return mfxloc
     
     
-def visualization(save_plots=False):
+def visualization(mfxparam, mfxdata, save_plots=False, plot_types=['count_traces', 'scatter', 'gauss']):
+    '''
+    implemented plot_types: count_traces, count_histogram, scatter, localization_histogram, gauss, localization_traces
+    '''
+    
     t1 = time.time()
     
     mfxvis = MinfluxVisualization2D(mfxparam, mfxdata, plot_style='default', 
                                     save_plots=save_plots)
     
-    # mfxvis.plot_count_traces(counts=mfxdata.counts_processed)
-    # mfxvis.plot_count_histogram(d_bins=1, log=True)
+    if 'count_traces' in plot_types:    # plot thresholded and filtered counts against time
+        mfxvis.plot_count_traces(counts=mfxdata.counts_processed)   
+    if 'count_histogram' in plot_types:     # plot histogram of processed counts
+        mfxvis.plot_count_histogram(d_bins=1, log=True)     
     
-    mfxvis.plot_localizations_scatter(localizations=mfxdata.localizations, show_lines=False, color_code='tile')
-    # mfxvis.plot_localizations_histogram(localizations=mfxdata.localizations, 
-    #                                   px_size = 0.5, shift_hist=True)
-    mfxvis.plot_localizations_gauss(localizations=mfxdata.localizations, 
-                                    sigma=1, px_size = 0.2)
-    if hasattr(mfxloc, 'p_drift'):
+    if 'scatter' in plot_types:     # scatter-plot, color-coded based on time or tile (i.e., position of the tip/tilt mirror)
+        mfxvis.plot_localizations_scatter(localizations=mfxdata.localizations, show_lines=False, color_code='tile')
+    if 'localization_histogram' in plot_types:  # 2D histogram displayed as heatmap; shift-hist option for straightforward smoothing of points
+        mfxvis.plot_localizations_histogram(localizations=mfxdata.localizations, 
+                                            px_size=0.5, shift_hist=True)
+    if 'gauss' in plot_types:   # convolve localization histogram with Gaussian kernel of width sigma
+        mfxvis.plot_localizations_gauss(localizations=mfxdata.localizations, 
+                                        sigma=1, px_size = 0.2)
+    
+    if hasattr(mfxloc, 'p_drift'):  # polynomial coefficients from post hoc drift correction
         p_drift = mfxloc.p_drift
     else:
         p_drift = None
-    # mfxvis.plot_localization_traces(localizations=mfxdata.localizations_raw, p_drift=p_drift, centering=False)
+    if 'localization_traces' in plot_types:     # plot localization coordinates against time
+        mfxvis.plot_localization_traces(localizations=mfxdata.localizations_raw, p_drift=p_drift, centering=False)
     
     t2 = time.time()
     print('visualization time: ', t2 - t1)
@@ -90,7 +102,7 @@ def visualization(save_plots=False):
     return mfxvis
 
     
-def analysis(save_plots=False):
+def analysis(mfxparam, mfxdata, mfxloc, save_plots=False):
     t1 = time.time()
     
     mfxanalysis = MinfluxAnalysisBeadSample(mfxparam, mfxdata, mfxloc, t_crop=None,
@@ -109,35 +121,29 @@ def analysis(save_plots=False):
 
 
 
-
-def main():
-    pass
-
-
-
-#%%
+#%% functions executed here
 if __name__ == '__main__':
-    main()
-    sample_type = 'blink'
-    save_plots = '.pdf'
+    sample_type = 'bead'   # sets parameter profile
+    save_plots = '.png'     # file type or None to skip plotting
     
-    mfxparam = MinfluxParameters(sample_type)
+    mfxparam = MinfluxParameters(sample_type)   #load parameter profile
     
-    #%% 
-    mfxdata = load_data()
+    #%% load minflux counts from file
+    mfxdata = load_data(mfxparam)   # optional integer parameter determined how many iterations to load (-1: entire file)
     
-    #%%
-    psf_model = PSFmodel('doughnut', mfxparam)
-    psf_model.create_psf_model(200, 0.2)
+    #%% minflux localization
+    psf_model = PSFmodel('doughnut', mfxparam)  # initialize PSF-model (optionally, use experimental calibration instead)
+    psf_model.create_psf_model(300, 0.2)    # grid size, pixel size
     
-    mfxloc = localization(psf=psf_model)
+    mfxloc = localization(mfxparam, mfxdata, psf=psf_model, plot_mle=False)
     
-    #%%
-    mfxvis = visualization(save_plots=save_plots)
+    #%% data visualization
+    mfxvis = visualization(mfxparam, mfxdata, save_plots=save_plots, plot_types=['count_traces', 'scatter', 'gauss', 'localization_traces'])
     
-    #%%
-    # mfxanalysis = analysis(save_plots=save_plots) 
+    #%% data analysis
+    # mfxanalysis = analysis(mfxparam, mfxdata, mfxloc, save_plots=save_plots) 
     
+    # if plots are saved, also save parameters to .txt file
     if save_plots:
         mfxparam.save_all()
     

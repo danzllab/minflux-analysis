@@ -144,13 +144,13 @@ class MinfluxVisualization2D:
         ax.set_aspect('equal')
         
         if type(fwhm) == float:
-            h = ax.hist2d(loc_all[:,0], loc_all[:,1], n_bins, range=xyrange, cmap='grey')
+            h = ax.hist2d(loc_all[:,0], loc_all[:,1], n_bins, range=xyrange, cmap='inferno')
             h_img = h[3]
             
             h_gauss = fftconvolve(h[0], self._f_gauss(fwhm=fwhm, intensity=1, grid_size=5*fwhm, px_size=px_size), mode='same')
             ax.clear()
             h_img = ax.imshow(h_gauss.transpose()[::-1,:], extent=[h[1][0], h[1][-1], h[2][0], h[2][-1]],
-                             cmap='grey')
+                             cmap='inferno')
             
         else:
             h = np.zeros(n_bins)

@@ -13,15 +13,16 @@ import matplotlib.pyplot as plt
 
 class MinfluxLocalization2D:
     def __init__(self, parameters, data, psf_data=None):
-         
+        '''Initialize minflux localization with parameters and data. Optional: specify psf (required for MLE localization).'''
+        # ensure same data format if no grid was generated; list with entries of shape (n_cycles, n_tcp) per tip/tilt exposure; each entry in list called "_exp" for experiment
         if hasattr(data, 'counts_tiles'):
             self.counts_raw = data.counts_tiles
             self.counts_processed = data.counts_tiles
         else:
             self.counts_raw = [data.counts_raw]
             self.counts_processed = [data.counts_raw]
-        if not hasattr(data, 't_exp'):
-            warnings.warn('No timestamps found. Create with t = 1 sec.')
+        if not hasattr(data, 't_exp'):  # create default timestamps if not previously specified.
+            warnings.warn('No timestamps found. Create with dt = 1 s.')
             data.create_timestamps(1)
         
         self.parameters = parameters
@@ -30,6 +31,7 @@ class MinfluxLocalization2D:
         
     
     def remove_activation_counts(self, counts=None):
+        '''Remove cycles when conditional activation was active from count traces; either specify counts or use processed counts.'''
         if counts is None:
             counts = self.counts_processed
         
@@ -37,8 +39,8 @@ class MinfluxLocalization2D:
         for counts_exp in counts:
             act_cycle = np.count_nonzero(counts_exp, axis=1) <= 1    #convention of dcs program: during activation first exposure = sum of counts, others 0
             counts_filtered_exp = np.where(np.vstack((act_cycle, )*self.parameters.n_tcp).transpose(), 
-                                           np.transpose((counts_exp[:,0]/self.parameters.n_tcp, )*self.parameters.n_tcp),   # set avg. counts for whole TCP
-                                           counts_exp)
+                                           np.transpose((counts_exp[:,0]/self.parameters.n_tcp, )*self.parameters.n_tcp),   # replace activation cycles by avg. counts across whole TCP for each iteration
+                                           counts_exp)  #if no activation cycle, retain counts
             counts_filtered.append(counts_filtered_exp)
         
         self.counts_processed = counts_filtered
@@ -46,31 +48,43 @@ class MinfluxLocalization2D:
  
     
     def bin_counts(self, counts=None, k_bin=5):
-        '''bin counts  of multiple exposures to improve precision; bin k_bin data points together'''
+        '''Bin counts  of multiple cycles to improve precision; sum k_bin data points together; either specify counts or use processed counts.'''
         if counts is None:
             counts = self.counts_processed 
         
         counts_binned = []
-        t_exp = [t[::k_bin] for t in self.data.t_exp]
+        t_exp = [t[::k_bin] for t in self.data.t_exp]   # adjust time stamps to match binned counts
         for i, counts_exp in enumerate(counts):
-            c_dim = counts_exp.shape
-            stub = c_dim[0]%k_bin
-            if stub: 
+            stub = counts_exp.shape[0]%k_bin    # stub: extra elements if number of cycles not divisible by k_bin
+            if stub: # if stub exists, remove
                 t_exp[i] = t_exp[i][:-1]
                 counts_exp = counts_exp[:-stub]     #crop last entries to have number of cycles fit k_bin
-            counts_exp_binned = counts_exp.reshape(-1, k_bin, self.parameters.n_tcp).sum(axis=1)
+            counts_exp_binned = counts_exp.reshape(-1, k_bin, self.parameters.n_tcp).sum(axis=1)    # bin counts as specified
             counts_binned.append(counts_exp_binned)
             
-        self.counts_processed = counts_binned
+        self.counts_processed = counts_binned   # binned counts new processed counts
         
-        self.parameters.t_tcp *= k_bin
+        self.parameters.t_tcp *= k_bin      # adjust effective exposure time
         self.data.t_exp = t_exp
         
         return counts_binned
 
         
     def filter_counts(self, filter_type, t_filter, counts=None, normalize=True):
-        ''''filter_weights: 1D array containing the weights of the filter'''
+        '''
+        
+
+        Parameters
+        ----------
+        filter_type : currently "box", "gauss", "triangle implemented"
+        t_filter : time constant of filter; width of box, sigma of gauss, or rise-/fall-time for triangle
+        counts : specify or use processed counts
+        normalize : normalize via division of filter weights by their sum
+
+        Returns
+        -------
+        counts_filtered
+        '''
         if counts is None:
             counts = self.counts_processed
         
@@ -79,19 +93,20 @@ class MinfluxLocalization2D:
         elif filter_type == 'box': 
             filter_weights = np.ones(t_filter)
         elif filter_type == 'triangle': 
-            filter_weights = np.hstack((np.arange(t_filter), np.arange(t_filter, 0, -1)))
+            filter_weights = np.hstack((np.arange(t_filter), np.arange(t_filter, 0, -1)))   #stack ascending and decending slopes
         else:
             raise ValueError("'filter_type' must be 'gauss', 'box' or 'triangle'.")
         
         if normalize: filter_weights = filter_weights/sum(filter_weights)
         filter_weights = filter_weights.reshape(-1, 1)  #reshape f_filter to convolve along axis 0
-        counts_filtered = [fftconvolve(counts_exp, filter_weights, mode='same') for counts_exp in counts]   #mode "same" gives edge effects but no phase; accept for now and reevaluate as needed
+        counts_filtered = [fftconvolve(counts_exp, filter_weights, mode='same') for counts_exp in counts]   #mode "same" gives edge effects but no phase; accept for now and reevaluate if needed
         
         self.counts_processed = counts_filtered
         return counts_filtered
     
     
     def sum_counts(self, counts=None):
+        '''Sum counts over all TCP-exposures for each cycle; specify counts or use processed counts.'''
         if counts is None:
             counts = self.counts_processed          
         counts_sum = [np.sum(counts_exp, axis=1) for counts_exp in counts]
@@ -99,7 +114,9 @@ class MinfluxLocalization2D:
     
     
     def threshold_counts(self, threshold, counts=None, cfr_max=0.25, t_min=1, 
-                         bin_var=None, thresh_var=0.1, subtract_background=True):
+                         bin_var=None, thresh_var=0.1, subtract_background=False):
+        
+        
         if counts is None:
             counts = self.counts_processed          
         counts_sum = self.sum_counts(counts)
@@ -299,15 +316,7 @@ class MinfluxLocalization2D:
         return localizations
 
 
-    def _crop_arr(self, arr, x0, y0, size_x, size_y):
-        x0 = int(round(x0))
-        y0 = int(round(y0))
-        size_x = int(round(size_x))
-        size_y = int(round(size_y))
-        return arr[x0:x0+size_x, y0:y0+size_y]
-    
-    
-    def MLE_numeric(self, counts, plot_p=False, ind_exp=0):
+    def MLE_numeric(self, counts, plot_mle=False, ind_exp=0):
         '''numeric MLE for arbitrary pattern (beam_shape() must have shape_param and center as 1st and 2nd arguments)'''
         if not hasattr(self.data, 'target_coordinates'):
             self.data.create_target_coordinates()
@@ -335,7 +344,7 @@ class MinfluxLocalization2D:
                 self.p_grid = p_grid
                 self.p_log_grid = np.log(p_grid)
                 
-                if plot_p:
+                if plot_mle:
                     self.plot_ind = 10
                     fig, ax = plt.subplots(1, 5, num=self.plot_ind, clear=True)
                     self.plot_ind += 1
@@ -353,26 +362,31 @@ class MinfluxLocalization2D:
             # # r_estimate = np.array(np.unravel_index(log_l.argmax(), log_l.shape))[::-1]    #np.unravel_index converts flat index (returned by argmax) to coordinate index
             
             
-            
-            p_corr = self._p_correct_background_mle(self.p_grid, self.sbr[ind_exp][i])
-            # p_corr = self.p_grid
-            # for j in range(len(p_grid)):
-            #     ax[j].imshow(p_corr[j])
+            if hasattr(self, 'sbr'):
+                p_corr = self._p_correct_background_mle(self.p_grid, self.sbr[ind_exp][i])
+                # p_corr = self.p_grid
+                # for j in range(len(p_grid)):
+                #     ax[j].imshow(p_corr[j])
+            else:
+                warnings.warn('No signal-to-background ratios set. Localizations may be biased.')
+                p_corr = self.p_grid
             
             # counts[i] = np.array([0.8*len(counts), 0.6*len(counts), 0.4*len(counts), i])
             log_l = sum([counts[i,k]*np.log(p_corr[k]) for k in range(counts.shape[1])])
             l_argmax = np.nonzero(log_l == np.nanmax(log_l))
             r_list.append([l_argmax[1][0], l_argmax[0][0]])
             
-            if plot_p and (i == 500):
-                print(counts[i])
+            if plot_mle and (i%500 == 0):
+                # print(counts[i])
+                ax[-1].clear()  #delete previous plots
                 ax[-1].imshow(log_l, cmap='cividis')
                 ax[-1].scatter(l_argmax[1][0], l_argmax[0][0], color='k')
                 for a in ax:
                     a.set_xticks([])
                     a.set_yticks([])
                 plt.tight_layout()
-                fig.savefig('log-likelihood.pdf', transparent=True)
+                counts_str = str(counts[i]).split()
+                fig.savefig(self.parameters.file_name + f'_log-likelihood_iteration{i}_counts{"-".join(counts_str)[1:-1]}.pdf', transparent=True)
  
         r_arr = np.asarray(r_list)
         r_arr = r_arr * self.psf_data.px_size - self.psf_data.grid_size/2 + self.parameters.L/2
@@ -382,7 +396,7 @@ class MinfluxLocalization2D:
    
     def LMS(self, counts, ind_exp=0):
         '''
-        least mean square estimator according to Balzarotti et al. (SI 3.2.1)        
+        least mean square estimator according to Balzarotti et al., Science (2017) (SI 3.2.1)        
 
         Parameters
         ----------
@@ -402,10 +416,10 @@ class MinfluxLocalization2D:
     
     
     def mLMS(self, counts, ind_exp=0, beta=None):
-        '''order k deduced from length of beta, beta default parameters taken from Balzarotti et al. (not found in Gwosch et al.)'''
+        '''order k deduced from length of beta, beta default parameters taken from Balzarotti et al., Science (2017); not found in Gwosch et al., Nat. Meth. (2020)'''
         if beta is None: 
-            # beta = [1.27, 3.8]    #values from Balzarotti et al.
-            beta = [0.4, 4, 6]
+            beta = [1.27, 3.8]    #values from Balzarotti et al.
+            # beta = [0.4, 4, 6]
         if not hasattr(self.data, 'target_coordinates'):
             self.data.create_target_coordinates()
     
@@ -416,14 +430,7 @@ class MinfluxLocalization2D:
                         (p[:,:self.parameters.n_tcp-1] @ self.data.target_coordinates[:self.parameters.n_tcp-1])
         return r_estimate
 
-      
-    def _p_correct_background_mle(self, p, sbr):
-        # formula (S30) from Balzarotti et al. (2016)
-        # compatible with LMS: p is 2D array, sbr is 1D array; and MLE: p is 3D array, sbr is scalar 
-        p = sbr/(sbr + 1) * p + 1/(1 + sbr) * 1/self.parameters.n_tcp
-        return p
-    
-   
+
     def crop_localizations(self, x_min, x_max, y_min, y_max, localizations=None):
         if localizations is None:
             localizations = self.localizations
@@ -545,7 +552,35 @@ class MinfluxLocalization2D:
     
     
     
-    
+    def _crop_arr(self, arr, x0, y0, size_x, size_y):
+        '''
+        Crop array to specified region. Values are rounded to next integer.
 
+        Parameters
+        ----------
+        arr : array to crop
+        x0 : starting point on axis 0
+        y0 : starting point on axis 1
+        size_x : number of entries to keep along axis 0
+        size_y : number of entries to keep along axis 1
+
+        Returns
+        -------
+        Cropped array.
+        '''
+        x0 = int(round(x0))
+        y0 = int(round(y0))
+        size_x = int(round(size_x))
+        size_y = int(round(size_y))
+        return arr[x0:x0+size_x, y0:y0+size_y]
+    
+    
+    def _p_correct_background_mle(self, p, sbr):
+        # formula (S30) from Balzarotti et al. (2016)
+        # compatible with LMS: p is 2D array, sbr is 1D array; and MLE: p is 3D array, sbr is scalar 
+        p = sbr/(sbr + 1) * p + 1/(1 + sbr) * 1/self.parameters.n_tcp
+        return p
+  
+ 
 
 
