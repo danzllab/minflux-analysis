@@ -22,7 +22,7 @@ def load_data(mfxparam, n_read=-1):
     t1 = time.time()
     mfxdata = DataMinflux(mfxparam, n_read=n_read)
     # mfxdata.find_offset()     # find offset corresponding to metadata to discard before reading counts; run if raw data format changes
-    # mfxdata.create_grid()   # create grid of positions of the tip/tilt mirror from given parameters and assign counts to positions/experiments
+    mfxdata.create_grid()   # create grid of positions of the tip/tilt mirror from given parameters and assign counts to positions/experiments
     mfxdata.create_timestamps()     # create timestamp for every set of photon counts
     t2 = time.time()
     print('data creation time: ', t2 - t1)
@@ -123,7 +123,7 @@ def analysis(mfxparam, mfxdata, mfxloc, save_plots=False):
 
 #%% functions executed here
 if __name__ == '__main__':
-    sample_type = 'bead'   # sets parameter profile
+    sample_type = 'blink'   # sets parameter profile
     save_plots = '.png'     # file type or None to skip plotting
     
     mfxparam = MinfluxParameters(sample_type)   #load parameter profile
@@ -138,7 +138,7 @@ if __name__ == '__main__':
     mfxloc = localization(mfxparam, mfxdata, psf=psf_model, plot_mle=False)
     
     #%% data visualization
-    mfxvis = visualization(mfxparam, mfxdata, save_plots=save_plots, plot_types=['count_traces', 'scatter', 'gauss', 'localization_traces'])
+    mfxvis = visualization(mfxparam, mfxdata, save_plots=save_plots, plot_types=['count_traces', 'gauss', 'scatter'])
     
     #%% data analysis
     # mfxanalysis = analysis(mfxparam, mfxdata, mfxloc, save_plots=save_plots) 

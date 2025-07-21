@@ -132,8 +132,9 @@ class DataMinflux:
         '''
         for i in range(*offset_range):
             d = np.fromfile(self.parameters.file_name + ".4P_mfx", offset=i, count=n_cols*10, dtype=np.int64).reshape((-1,n_cols))  # for every offset in specified range, read first 10 iterations from file
-            dmax = np.max(np.abs(d[:,cols_counts[0]:cols_counts[1]]))       #calculate maximum of absolute values of column that should contain photon counts.
-            if dmax < counts_max:   # if given offset yields reasonably small value, print to indicate potential hit
+            dmax = np.max(d[:,cols_counts[0]:cols_counts[1]])       # calculate maximum of columns that should contain photon counts.
+            dmin = np.min(d[:,cols_counts[0]:cols_counts[1]])       # calculate minimum of columns that should contain photon counts.
+            if dmin >= 0 and dmax < counts_max:   # if given offset yields non-negative values with reasonably small max., print to indicate potential hit
                 print(f'For offset = {i}, photon counts go up to {dmax}.')    
         
         

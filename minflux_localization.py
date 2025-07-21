@@ -72,13 +72,13 @@ class MinfluxLocalization2D:
         
     def filter_counts(self, filter_type, t_filter, counts=None, normalize=True):
         '''
-        
+        Filter counts traces to remove noise; either specify counts or use processed counts.
 
         Parameters
         ----------
         filter_type : currently "box", "gauss", "triangle implemented"
         t_filter : time constant of filter; width of box, sigma of gauss, or rise-/fall-time for triangle
-        counts : specify or use processed counts
+        counts : specify count traces or use processed counts
         normalize : normalize via division of filter weights by their sum
 
         Returns
@@ -99,7 +99,7 @@ class MinfluxLocalization2D:
         
         if normalize: filter_weights = filter_weights/sum(filter_weights)
         filter_weights = filter_weights.reshape(-1, 1)  #reshape f_filter to convolve along axis 0
-        counts_filtered = [fftconvolve(counts_exp, filter_weights, mode='same') for counts_exp in counts]   #mode "same" gives edge effects but no phase; accept for now and reevaluate if needed
+        counts_filtered = [fftconvolve(counts_exp, filter_weights, mode='same') for counts_exp in counts]   # mode "same" gives edge effects but no phase (i.e., output same length as input); accept for now and reevaluate if needed
         
         self.counts_processed = counts_filtered
         return counts_filtered
@@ -115,11 +115,30 @@ class MinfluxLocalization2D:
     
     def threshold_counts(self, threshold, counts=None, cfr_max=0.25, t_min=1, 
                          bin_var=None, thresh_var=0.1, subtract_background=False):
-        
+        '''
+        Threshold counts to extract single-molecule emission events.
+
+        Parameters
+        ----------
+        threshold : count threshold; either list containing lower and upper or single value (lower threshold; multiplied by 2 to obtain upper)
+        counts : specify count traces or use processed counts
+        cfr_max : maximum center frequency ratio (fraction of counts in center exposure)
+        t_min : minimum on-time in s
+        bin_var : how many cycles to bin for calculating local variance of count levels; if none, no variance-based thresholding is performed
+        thresh_var : threshold for local variance of summed counts relative to count levels
+        subtract_background : boolean indicating if background is subtracted from count traces (not modeled!); not recommended
+
+        Returns
+        -------
+        counts_thresh : counts corresponding to time points when single-molecule emission was detected
+        count_mask : mask indicating time points when single-molecule emission was detected
+
+        '''
         
         if counts is None:
-            counts = self.counts_processed          
-        counts_sum = self.sum_counts(counts)
+            counts = self.counts_processed        
+            
+        counts_sum = self.sum_counts(counts)    # sum across TCP-exposures
         counts_sum = [np.where(sum_exp > 1, sum_exp, np.ones(sum_exp.shape)) 
                       for sum_exp in counts_sum]   #to avoid division by small numbers
         
@@ -128,80 +147,74 @@ class MinfluxLocalization2D:
         counts_thresh = []
         counts_background = []
         
-        if len(threshold) == 2:
+        if hasattr('threshold', '__iter__'):
             thresh_low = threshold[0]
             thresh_high = threshold[1]
-        else:   #threshold can either be scalar or 2D vector, else will throw error
+        else:   # if single value is given, assum upper threshold to be twice of (given) lower threshold
             thresh_low = threshold
             thresh_high = 2 * threshold
             
         for counts_exp, sum_exp, t in zip(counts, counts_sum, self.data.t_exp):
             ## intensity thresholding
-            #create mask that has 1 if the summed counts of an exposure are above the threshold, and 0 otherwise
+            #create mask that has 1 if the summed counts of an exposure are within the thresholds, and 0 otherwise
             mask_exp = np.where(np.logical_and(sum_exp > thresh_low, sum_exp < thresh_high), 
                                 np.ones(sum_exp.shape, dtype=int), 
                                 np.zeros(sum_exp.shape, dtype=int)) 
             
             ## filter out events with too high counts in central exposure
-            mask_exp = np.where(np.logical_and(mask_exp, counts_exp[:,-1] < sum_exp*cfr_max), 
+            mask_exp = np.where(np.logical_and(mask_exp, counts_exp[:,-1] < sum_exp*cfr_max),   # central exposure in last count column!
                                 np.ones(sum_exp.shape, dtype=int), 
                                 np.zeros(sum_exp.shape, dtype=int)) 
             
             ## variation-based thresholding
             if bin_var is not None:
-                # for each exposure cycle, sum_var holds the local neighborhood of the count sum along the last axis
-                sum_var = np.zeros((len(sum_exp) + bin_var, bin_var))  
-                
-                # initialize first and last bins with first and last datapoint; want size same as count traces, so need to fill up ends
+                # for each TCP-cycle, sum_var holds the summed counts corresponding to surrounding time point s
+                sum_var = np.zeros((len(sum_exp) + bin_var, bin_var))       # time points along axis 0, filled up with summed counts in temporal proximity along axis 1
+                # initialize first and last bins with first and last datapoint, respectively; want size same as count traces, so need to fill up ends
                 sum_var[:bin_var] = sum_exp[0]  
                 sum_var[-bin_var:] = sum_exp[-1]
-                for i in range(bin_var):    # looping over "bin axis" much more efficient than filling bins one by one (loop over count sum)
+                for i in range(bin_var):    # looping over "bin axis" much more computationally efficient than filling bins one by one (i.e., looping over count sum)
                     # each column is shifted by one; as result, bin is filled with entries [sum[k-bin_var/2], ..., sum[k], ..., sum[k+bin_var/2]]
-                    sum_var[i:-(bin_var-i),i] = sum_exp
+                    sum_var[i:-(bin_var-i), i] = sum_exp
                 
-                # crop to proper length; need to distinguish between even/odd bin size
+                # crop to proper length; distinguish between even/odd bin size
                 if bin_var % 2 == 0:
                     sum_var = sum_var[bin_var//2:-(bin_var//2)]
                 else:
                     sum_var = sum_var[bin_var//2:-(bin_var//2 + 1)]  
                      
-                sum_noise = np.std(sum_var, axis=-1)/sum_exp  #calculate std. relative to sum for each data point
+                sum_noise = np.std(sum_var, axis=-1)/sum_exp  # calculate standard deviation relative to sum for each data point - to be used for thresholding
                 
-                # fig, ax = plt.subplots(1, 1, num=self.plot_ind, clear=True)
-                # self.plot_ind += 1
-                # ax.plot(sum_exp)
-                # ax1 = ax.twinx()
-                # ax1.plot(sum_noise, color='C1')
-                
-            else:
+            else:   # if bin_var not given, set variance to 0 to bypass variance-based thresholding
                 sum_noise = np.zeros(sum_exp.shape)
             
             ## on-time thresholding
-            switch_events = np.diff(mask_exp)     #equals 1 when switched on and -1 when switched off
-            switch_on = np.nonzero(switch_events == 1)[0]     #indices of on-switching events
-            switch_off = np.nonzero(switch_events == -1)[0]    #indices of off-switching events
-            
-            if mask_exp[0] == 1:   #case when  trace starts with emission event
+            switch_events = np.diff(mask_exp)     # extract time points when switching occurs (from count levels and cfr thresholding); 1 when on-switching and -1 when off-switching
+            switch_on = np.nonzero(switch_events == 1)[0]     # indices of on-switching events
+            switch_off = np.nonzero(switch_events == -1)[0]    # indices of off-switching events
+            # format mask_exp to ensure that it starts and ends in the non-emissive state
+            if mask_exp[0] == 1:   # when  trace starts with emission event, assume that it switches on at t = 0 s
                 switch_on = np.hstack([0, switch_on])
-            if mask_exp[-1] == 1:    #case when trace ends with active fluorophore
+            if mask_exp[-1] == 1:    # when trace ends with active fluorophore, assume that it switches off when experiments ends
                 switch_off = np.hstack([switch_off, counts_exp.shape[0] - 1])
             
-            on_length = switch_off - switch_on
-            off_length = np.hstack([switch_on, counts_exp.shape[0]]) - np.hstack([0, switch_off])
-            # create array to encode length of on-event in mask
-            length_mask = [np.zeros(off_length[0])]
-            for on_event, off_event in zip(on_length, off_length[1:]):
-                length_mask.append(on_event*np.ones(on_event))
-                length_mask.append(np.zeros(off_event))
-                        
-            length_mask = np.hstack(length_mask)
+            # extract lengths of instances with active/inactive emitter
+            on_length = switch_off - switch_on      # arrays formatted previously to ensure on-switching always deteced before off-switching
+            off_length = np.hstack([switch_on, counts_exp.shape[0]]) - np.hstack([0, switch_off])   # stack last/first datapoints in end/beginning to reverse order
+            # create array to encode length of on-event in mask: for every time point, 0 if no emission event detected, on-length of corresponding event (in TCP-cyles) if emission detected 
+            length_mask = [np.zeros(off_length[0])]     #initialize with first off-event
+            for on_event, off_event in zip(on_length, off_length[1:]):  # build length mask by alternating on- and off-events 
+                length_mask.append(on_event*np.ones(on_event))      # append value of "on"-cycles once for every cycle
+                length_mask.append(np.zeros(off_event))             # append 0s while no emission detected
+            length_mask = np.hstack(length_mask)    # stack to flatten mask
             
-            # modify mask to filter out "noisy" or too short on-events (flukes or diffusing dye in PAINT)
+            # modify previously obtained mask to filter out too short (flukes or diffusing dye in PAINT) or "noisy" on-events
             mask_exp = np.where(np.logical_and(length_mask >= t_min/(self.parameters.n_tcp*self.parameters.t_tcp), sum_noise < thresh_var),
                                 np.ones(sum_exp.shape, dtype=bool), 
                                 np.zeros(sum_exp.shape, dtype=bool))
-
-            mask_bg_exp = np.where(np.logical_and(length_mask == 0, sum_noise < thresh_var),
+            
+            # define background as time point when summed counts and their local variance are below respective threshold
+            mask_bg_exp = np.where(np.logical_and(sum_exp < thresh_low, sum_noise < thresh_var),
                                    np.ones(sum_exp.shape, dtype=bool), 
                                    np.zeros(sum_exp.shape, dtype=bool))
             # assume constant background for every experiment, but not for across TCP positions
