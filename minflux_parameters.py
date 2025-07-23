@@ -54,15 +54,15 @@ class MinfluxParameters:
         self.estimator = 'mle'
         self.filter_type = 'box'
         self.subtract_bg = False
-        self.subtract_drifts = -1
+        self.subtract_drifts = 11
         
-        self.count_threshold = [25, 35]
+        self.count_threshold = [25, 65]
         self.t_threshold = 0.05
         self.variation_threshold = 0.15 
         self.cfr_max = 0.5
         self.t_filter = 45
         self.k_bin = 1
-        self.n_photon = 10000
+        self.n_photon = 4000
         
         
     def _load_parameters_bead(self):

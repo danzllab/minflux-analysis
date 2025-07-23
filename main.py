@@ -44,9 +44,9 @@ def localization(mfxparam, mfxdata, psf=None, plot_mle=False):
                           bin_var=mfxparam.t_filter+1, thresh_var=mfxparam.variation_threshold, 
                           cfr_max=mfxparam.cfr_max, subtract_background=mfxparam.subtract_bg)   # subtract_background not recommended - background should be modeled, not subtracted!
 
-    if mfxparam.n_photon < 0:
+    if mfxparam.n_photon < 0:   # if photon bin parameter negative, directly use thresholded, filtered counts 
         loc = mfxloc.estimate_position(counts_thresh=mfxloc.counts_thresh, estimator=mfxparam.estimator)
-    else:
+    else:   # if photon bin parameter positive, use it to bin raw counts where emission event was detected
         events_binned = mfxloc.bin_emission_events(counts=mfxloc.counts_raw, n_bin=mfxparam.n_photon)
         loc = mfxloc.estimate_position(counts_thresh=events_binned, estimator=mfxparam.estimator, estimator_param={'plot_mle': plot_mle})
         
@@ -54,8 +54,10 @@ def localization(mfxparam, mfxdata, psf=None, plot_mle=False):
     # loc = [loc_exp[::30] for loc_exp in loc]  # for faster plotting
     # loc = mfxloc.crop_localizations(-10, -3, -7, 0, localizations=loc)    #crop localizations
     
-    if mfxparam.subtract_drifts >= 0: loc_corr, p_drift = mfxloc.subtract_drifts_fit(k_fit=mfxparam.subtract_drifts, fit_separate=True)
-    else: loc_corr, p_drift = None, None
+    if mfxparam.subtract_drifts >= 0:   # if drift subtraction parameter positive or 0, apply post host drift correction using polynomial fit
+        loc_corr, p_drift = mfxloc.subtract_drifts_fit(k_fit=mfxparam.subtract_drifts, fit_separate=True)
+    else: 
+        loc_corr, p_drift = None, None
     
     mfxdata.get_localization_data(mfxloc)
     
@@ -65,9 +67,9 @@ def localization(mfxparam, mfxdata, psf=None, plot_mle=False):
     return mfxloc
     
     
-def visualization(mfxparam, mfxdata, save_plots=False, plot_types=['count_traces', 'scatter', 'gauss']):
+def visualization(mfxparam, mfxdata, save_plots=False, plot_types=['gauss', 'count_traces', 'scatter_tile']):
     '''
-    implemented plot_types: count_traces, count_histogram, scatter, localization_histogram, gauss, localization_traces
+    implemented plot_types: count_traces, count_histogram, scatter_tile, scatter_time, localization_histogram, gauss, localization_traces
     '''
     
     t1 = time.time()
@@ -76,20 +78,22 @@ def visualization(mfxparam, mfxdata, save_plots=False, plot_types=['count_traces
                                     save_plots=save_plots)
     
     if 'count_traces' in plot_types:    # plot thresholded and filtered counts against time
-        mfxvis.plot_count_traces(counts=mfxdata.counts_processed)   
+        mfxvis.plot_count_traces(counts=mfxdata.counts_processed, show_trace_segmentation=True)   
     if 'count_histogram' in plot_types:     # plot histogram of processed counts
         mfxvis.plot_count_histogram(d_bins=1, log=True)     
     
-    if 'scatter' in plot_types:     # scatter-plot, color-coded based on time or tile (i.e., position of the tip/tilt mirror)
+    if 'scatter_tile' in plot_types:     # scatter-plot, color-coded based on tile (i.e., position of the tip/tilt mirror)
         mfxvis.plot_localizations_scatter(localizations=mfxdata.localizations, show_lines=False, color_code='tile')
+    if 'scatter_time' in plot_types:     # scatter-plot, color-coded based on time (i.e., position of the tip/tilt mirror)
+        mfxvis.plot_localizations_scatter(localizations=mfxdata.localizations, show_lines=False, color_code='time')
     if 'localization_histogram' in plot_types:  # 2D histogram displayed as heatmap; shift-hist option for straightforward smoothing of points
         mfxvis.plot_localizations_histogram(localizations=mfxdata.localizations, 
-                                            px_size=0.5, shift_hist=True)
-    if 'gauss' in plot_types:   # convolve localization histogram with Gaussian kernel of width sigma
+                                            px_size=0.5, shift_hist=False)
+    if 'gauss' in plot_types:   # plot localizations as Gaussians of width sigma (either single value or list containing one per localization)
         mfxvis.plot_localizations_gauss(localizations=mfxdata.localizations, 
-                                        sigma=1, px_size = 0.2)
+                                        sigma=1, px_size=0.2)
     
-    if hasattr(mfxloc, 'p_drift'):  # polynomial coefficients from post hoc drift correction
+    if hasattr(mfxloc, 'p_drift'):  # if they exist, use polynomial coefficients from post hoc drift correction 
         p_drift = mfxloc.p_drift
     else:
         p_drift = None
@@ -124,7 +128,7 @@ def analysis(mfxparam, mfxdata, mfxloc, save_plots=False):
 #%% functions executed here
 if __name__ == '__main__':
     sample_type = 'blink'   # sets parameter profile
-    save_plots = '.png'     # file type or None to skip plotting
+    save_plots = '.png'     # file ending or None if don't want to save
     
     mfxparam = MinfluxParameters(sample_type)   #load parameter profile
     
@@ -138,7 +142,7 @@ if __name__ == '__main__':
     mfxloc = localization(mfxparam, mfxdata, psf=psf_model, plot_mle=False)
     
     #%% data visualization
-    mfxvis = visualization(mfxparam, mfxdata, save_plots=save_plots, plot_types=['count_traces', 'gauss', 'scatter'])
+    mfxvis = visualization(mfxparam, mfxdata, save_plots=save_plots, plot_types=['localization_traces', 'count_histogram', 'gauss'])
     
     #%% data analysis
     # mfxanalysis = analysis(mfxparam, mfxdata, mfxloc, save_plots=save_plots) 

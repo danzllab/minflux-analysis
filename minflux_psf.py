@@ -15,10 +15,26 @@ from minflux_utils import _f_doughnut
 class PSFmodel:
     
     def __init__(self, psf_type, parameters):
+        '''
+        Initialize PSF-model based on theoretical beam shape.
+
+        Parameters
+        ----------
+        psf_type : currently only "doughnut" implemented
+        parameters : minflux-parameter file
+        '''
         self.psf_type = psf_type
         self.parameters = parameters
         
     def create_psf_model(self, grid_size=500, px_size=0.5):
+        '''
+        Create psf class attribute as as grid of pixel intensity values.
+
+        Parameters
+        ----------
+        grid_size : size of coordinate grid per axis in nm; currently only square grids supported
+        px_size : pixel size of coordinate grid
+        '''
         self.grid_size = grid_size
         self.px_size = px_size
         if self.psf_type == 'doughnut':
@@ -36,14 +52,14 @@ class PSFcalibration:
         self.frames_dim = np.array(frames_raw.shape)
         self.px_size = px_size
         
-        # if single frame given, turn to stack of length 1
+        # if single frame given, convert to stack of length 1
         if len(self.frames_dim) == 2:
             self.frames_raw = np.array([self.frames_raw])
             self.frames_dim = np.array(self.frames_raw.shape)
         
         self.psf_model = psf_model
         
-    def f_gauss(self, xy, x0=None, y0=None, fwhm=300, intensity=100):
+    def _f_gauss(self, xy, x0=None, y0=None, fwhm=300, intensity=100):
         if x0 == None: 
             x0 = np.mean(xy[0])
         if y0 == None: 
@@ -54,7 +70,7 @@ class PSFcalibration:
         f = intensity * np.exp(-4*np.log(2)*rr2/fwhm**2)
         return f
     
-    def f_doughnut(self, xy, x0=None, y0=None, fwhm=300, intensity=100):
+    def _f_doughnut(self, xy, x0=None, y0=None, fwhm=300, intensity=100):
         if x0 == None: 
             x0 = np.mean(xy[0])
         if y0 == None: 
@@ -65,7 +81,7 @@ class PSFcalibration:
         f = intensity*4*np.log(2)*np.e*rr2/fwhm**2 * np.exp(-4*np.log(2)*rr2/fwhm**2)
         return f
     
-    def f_poly(self, xy, x0=None, y0=None, p=None, k=4):
+    def _f_poly(self, xy, x0=None, y0=None, p=None, k=4):
         if x0 == None: 
             x0 = np.mean(xy[0])
         if y0 == None: 
@@ -100,7 +116,7 @@ class PSFcalibration:
         coord_center = np.mean(coord, axis=1)
         
         if modelfun['name'] == 'poly':
-            f_fit = lambda xy, x0, y0, *p: self.f_poly(xy, x0, y0, p, k=modelfun['k'])
+            f_fit = lambda xy, x0, y0, *p: self._f_poly(xy, x0, y0, p, k=modelfun['k'])
             frame_avg_init = np.mean(self.frames_raw, axis=0)
             p_init = np.zeros((modelfun['k'] + 1, modelfun['k'] + 1))
             px_center = np.rint(coord_center/self.px_size).astype(int)
@@ -108,10 +124,10 @@ class PSFcalibration:
             p_init[0,1] = (np.mean(frame_avg_init[px_center[0], [px_center[1]-1, px_center[1]+1]]) - frame_avg_init[px_center[0], px_center[1]])/self.px_size
             p0 = [coord_center[0], coord_center[1], *p_init.flatten()]
         elif modelfun['name'] == 'doughnut':
-            f_fit = self.f_doughnut
+            f_fit = self._f_doughnut
             p0 = [coord_center[0], coord_center[1], 300, 100]
         elif modelfun['name'] == 'gauss':
-            f_fit = self.f_gauss
+            f_fit = self._f_gauss
             p0 = [coord_center[0], coord_center[1], 300, 100]
         else:
             raise ValueError("modelfun['name'] must be 'poly', 'doughnut' or 'gauss'.") 
@@ -173,17 +189,17 @@ class PSFcalibration:
         coord_center = np.mean(coord, axis=1)
         
         if modelfun['name'] == 'poly':
-            f_fit = lambda xy, x0, y0, *p: self.f_poly(xy, x0, y0, p, k=modelfun['k'])
+            f_fit = lambda xy, x0, y0, *p: self._f_poly(xy, x0, y0, p, k=modelfun['k'])
             p_init = np.zeros((modelfun['k'] + 1, modelfun['k'] + 1))
             px_center = np.rint(coord_center/self.px_size).astype(int)
             p_init[1,0] = (np.mean(frame_avg[[px_center[0]-1, px_center[0]+1], px_center[1]]) - frame_avg[px_center[0], px_center[1]])/self.px_size
             p_init[0,1] = (np.mean(frame_avg[px_center[0], [px_center[1]-1, px_center[1]+1]]) - frame_avg[px_center[0], px_center[1]])/self.px_size
             p0 = [coord_center[0], coord_center[1], *p_init.flatten()]
         elif modelfun['name'] == 'doughnut':
-            f_fit = self.f_doughnut
+            f_fit = self._f_doughnut
             p0 = [coord_center[0], coord_center[1], 350, np.mean(frame_avg)*frame_avg.size]
         elif modelfun['name'] == 'gauss':
-            f_fit = self.f_gauss
+            f_fit = self._f_gauss
         else:
             raise ValueError("modelfun['name'] must be 'poly', 'doughnut' or 'gauss'.") 
           

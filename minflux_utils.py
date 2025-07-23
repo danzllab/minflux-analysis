@@ -87,73 +87,76 @@ def _draw_localizations_scatter(fig, ax, localizations, t, show_lines=False, col
     ax.set_aspect('equal')
 
 
-def _draw_localizations_histogram(fig, ax, localizations, vlim=None, shift_hist=False):
-    loc_all = np.vstack(localizations)
-    
-    n_bins = [round((max(loc_all[:,0]) - min(loc_all[:,0]))/px_size),
-              round((max(loc_all[:,1]) - min(loc_all[:,1]))/px_size)]
-    
-    # define range to get rid of rounding error
-    xyrange = [[min(loc_all[:,0]), min(loc_all[:,0]) + (n_bins[0] - 2)*px_size],
-               [min(loc_all[:,1]), min(loc_all[:,1]) + (n_bins[1] - 2)*px_size]]
-    
-    ax.set_aspect('equal')
-    
-    h = ax.hist2d(loc_all[:,0], loc_all[:,1], n_bins, range=xyrange, cmap='inferno')
-    h_img = h[3]
-    # currently hist is always shifted by 1 to left and right, could adapt for more px?
-    if shift_hist:
-        h_shift = h[0][1:-1,1:-1] + 1/4*(h[0][0:-2,1:-1] + h[0][2:,1:-1] + h[0][1:-1,0:-2] + h[0][1:-1,2:])
-        h_shift *= 0.5
-        ax.clear()
-        h_img = ax.imshow(h_shift.transpose()[::-1,:], extent=[h[1][0], h[1][-1], h[2][0], h[2][-1]],
-                         cmap='inferno')
-    
-    if vlim:
-        h_img.set_clim(vmin=vlim[0], vmax=vlim[1])
-        
-    divider = make_axes_locatable(ax)   # this and next line needed for colorbar to match plot height
-    cax = divider.append_axes("right", size="5%", pad=0.15)
-    fig.colorbar(h_img, cax=cax)
-
-
-def _draw_localizations_gauss(fig, ax, localizations, px_size=0.1, sigma=1, vlim=None):
-    fwhm = 2.355 * sigma
-    
-    n_bins = [round((max(loc_all[:,0]) - min(loc_all[:,0]))/px_size),
-              round((max(loc_all[:,1]) - min(loc_all[:,1]))/px_size)]
-    
-    # define range to get rid of rounding error
-    xyrange = [[min(loc_all[:,0]), min(loc_all[:,0]) + (n_bins[0] - 2)*px_size],
-               [min(loc_all[:,1]), min(loc_all[:,1]) + (n_bins[1] - 2)*px_size]]
-    
-    ax.set_aspect('equal')
-    
-    if type(fwhm) == float:
-        h = ax.hist2d(loc_all[:,0], loc_all[:,1], n_bins, range=xyrange, cmap='inferno')
-        h_img = h[3]
-        
-        h_gauss = fftconvolve(h[0], _f_gauss(fwhm=fwhm, grid_size=5*fwhm, px_size=px_size), mode='same')
-        ax.clear()
-        h_img = ax.imshow(h_gauss.transpose()[::-1,:], extent=[h[1][0], h[1][-1], h[2][0], h[2][-1]],
-                         cmap='inferno')
-        
-    else:
-        h = np.zeros(n_bins)
-        for loc, fw in zip(loc_all, fwhm):
-            h += f_gauss(fwhm=fw, center=loc, intensity=1 , n_grid=n_bins)
-    
-    if vlim is not None:
-        h_img.set_clim(vmin=vlim[0], vmax=vlim[1])
-        
-    divider = make_axes_locatable(ax)   # this and next line needed for colorbar to match plot height
-    cax = divider.append_axes("right", size="5%", pad=0.15)
-    fig.colorbar(h_img, cax=cax)
-    
+# =============================================================================
+# TODO implement properly if desired
+# def _draw_localizations_histogram(fig, ax, localizations, vlim=None, shift_hist=False):
+#     loc_all = np.vstack(localizations)
+#     
+#     n_bins = [round((max(loc_all[:,0]) - min(loc_all[:,0]))/px_size),
+#               round((max(loc_all[:,1]) - min(loc_all[:,1]))/px_size)]
+#     
+#     # define range to get rid of rounding error
+#     xyrange = [[min(loc_all[:,0]), min(loc_all[:,0]) + (n_bins[0] - 2)*px_size],
+#                [min(loc_all[:,1]), min(loc_all[:,1]) + (n_bins[1] - 2)*px_size]]
+#     
+#     ax.set_aspect('equal')
+#     
+#     h = ax.hist2d(loc_all[:,0], loc_all[:,1], n_bins, range=xyrange, cmap='inferno')
+#     h_img = h[3]
+#     # currently hist is always shifted by 1 to left and right, could adapt for more px?
+#     if shift_hist:
+#         h_shift = h[0][1:-1,1:-1] + 1/4*(h[0][0:-2,1:-1] + h[0][2:,1:-1] + h[0][1:-1,0:-2] + h[0][1:-1,2:])
+#         h_shift *= 0.5
+#         ax.clear()
+#         h_img = ax.imshow(h_shift.transpose()[::-1,:], extent=[h[1][0], h[1][-1], h[2][0], h[2][-1]],
+#                          cmap='inferno')
+#     
+#     if vlim:
+#         h_img.set_clim(vmin=vlim[0], vmax=vlim[1])
+#         
+#     divider = make_axes_locatable(ax)   # this and next line needed for colorbar to match plot height
+#     cax = divider.append_axes("right", size="5%", pad=0.15)
+#     fig.colorbar(h_img, cax=cax)
+# 
+# 
+# def _draw_localizations_gauss(fig, ax, localizations, px_size=0.1, sigma=1, vlim=None):
+#     fwhm = 2.355 * sigma
+#     
+#     n_bins = [round((max(loc_all[:,0]) - min(loc_all[:,0]))/px_size),
+#               round((max(loc_all[:,1]) - min(loc_all[:,1]))/px_size)]
+#     
+#     # define range to get rid of rounding error
+#     xyrange = [[min(loc_all[:,0]), min(loc_all[:,0]) + (n_bins[0] - 2)*px_size],
+#                [min(loc_all[:,1]), min(loc_all[:,1]) + (n_bins[1] - 2)*px_size]]
+#     
+#     ax.set_aspect('equal')
+#     
+#     if type(fwhm) == float:
+#         h = ax.hist2d(loc_all[:,0], loc_all[:,1], n_bins, range=xyrange, cmap='inferno')
+#         h_img = h[3]
+#         
+#         h_gauss = fftconvolve(h[0], _f_gauss(fwhm=fwhm, grid_size=5*fwhm, px_size=px_size), mode='same')
+#         ax.clear()
+#         h_img = ax.imshow(h_gauss.transpose()[::-1,:], extent=[h[1][0], h[1][-1], h[2][0], h[2][-1]],
+#                          cmap='inferno')
+#         
+#     else:
+#         h = np.zeros(n_bins)
+#         for loc, fw in zip(loc_all, fwhm):
+#             h += f_gauss(fwhm=fw, center=loc, intensity=1 , n_grid=n_bins)
+#     
+#     if vlim is not None:
+#         h_img.set_clim(vmin=vlim[0], vmax=vlim[1])
+#         
+#     divider = make_axes_locatable(ax)   # this and next line needed for colorbar to match plot height
+#     cax = divider.append_axes("right", size="5%", pad=0.15)
+#     fig.colorbar(h_img, cax=cax)
+#     
+# =============================================================================
 
 
 if __name__ == '__main__':
-    img = _f_gauss(300, 500, 1)
+    img = _f_gauss(300, [500, 700], 1)
     plt.imshow(img)    
     
     
