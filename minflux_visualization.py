@@ -18,8 +18,6 @@ locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')  # inserts thousands separator
 from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from minflux_utils import _sort_time_coded_data, _sum_counts, \
-    _draw_localizations_scatter
 
 
 class MinfluxVisualization2D:
@@ -86,10 +84,29 @@ class MinfluxVisualization2D:
         '''
         if localizations is None:
             localizations = self.data.localizations
-         
+        
+        t, loc_all = self._sort_time_coded_data(self.data.t_mask, localizations)   # to handle instances where a grid was scanned multiple times, hence time points might not be monotonously increasing between experiments
+        
         fig, ax = self._subplots_template()
-        _draw_localizations_scatter(fig, ax, localizations, self.data.t_mask, show_lines=show_lines, color_code=color_code)     # create from utility function
+        
+        if show_lines: ax.plot(loc_all[:,0], loc_all[:,1], color='k', alpha=0.3, linewidth=0.5, zorder=1)       #plot lines between subsequent localizations
+        if color_code == 'time':
+            h = ax.scatter(loc_all[:,0], loc_all[:,1], c=t, cmap='cividis',
+                           alpha=1, s=5, linewidth=0.5, zorder=2)
+            divider = make_axes_locatable(ax)   # this and next line needed for colorbar to match plot height
+            cax = divider.append_axes("right", size="5%", pad=0.15)
+            cbar = fig.colorbar(h, cax=cax)
+            cbar.solids.set(alpha=1)
+            cax.set_ylabel('Time [s]')
+        elif color_code == 'tiles':
+            for i in range(len(localizations)):     # one tile/experiment per list entry
+                if localizations[i].size > 0:
+                    ax.scatter(localizations[i][:,0], localizations[i][:,1], zorder=2,
+                               facecolors='none', edgecolors='C'+str(i), alpha = 0.5, s=5, linewidth=0.5)
+        else:
+            ax.scatter(loc_all[:,0], loc_all[:,1], alpha=0.5, s=5, linewidth=0.5, zorder=2)
 
+        ax.set_aspect('equal')
         ax.set_xlabel('x [nm]')
         ax.set_ylabel('y [nm]')
         
@@ -219,7 +236,7 @@ class MinfluxVisualization2D:
         '''
         if localizations is None:
             localizations = self.data.localizations
-        t, loc_all = _sort_time_coded_data(self.data.t_mask, localizations)     # to handle instances where a grid was scanned multiple times, hence time points might not be monotonously increasing between experiments
+        t, loc_all = self._sort_time_coded_data(self.data.t_mask, localizations)     # to handle instances where a grid was scanned multiple times, hence time points might not be monotonously increasing between experiments
         
         if centering:
             loc_mean = np.mean(loc_all, axis=0)
@@ -246,7 +263,7 @@ class MinfluxVisualization2D:
                     drifts.append(drift_exp)
                 # drift_exp -= p_drift[i][-1]   # in case constant component should be removed
         
-            t, drifts_all = _sort_time_coded_data(self.data.t_mask, drifts)     # to handle instances where a grid was scanned multiple times, hence time points might not be monotonously increasing between experiments
+            t, drifts_all = self._sort_time_coded_data(self.data.t_mask, drifts)     # to handle instances where a grid was scanned multiple times, hence time points might not be monotonously increasing between experiments
             ax.plot(t, drifts_all[:,0], color='C0', linewidth=1.5)
             ax.plot(t, drifts_all[:,1], color='C1', linewidth=1.5)
         
@@ -267,7 +284,7 @@ class MinfluxVisualization2D:
         if counts is None:
             counts = self.data.counts_processed
             
-        t, counts_all = _sort_time_coded_data(self.data.t_exp, counts)  # to handle instances where a grid was scanned multiple times, hence time points might not be monotonously increasing between experiments
+        t, counts_all = self._sort_time_coded_data(self.data.t_exp, counts)  # to handle instances where a grid was scanned multiple times, hence time points might not be monotonously increasing between experiments
         
         fig, ax = self._subplots_template()
         plt.xlabel('Time [s]')
@@ -276,8 +293,8 @@ class MinfluxVisualization2D:
         plt.ylim(bottom=min(np.min(counts_all), 0))     #to deal with negative BG counts after BG subtraction
             
         if show_trace_segmentation: 
-            _, counts_sum = _sort_time_coded_data(self.data.t_exp, _sum_counts(counts))
-            _, count_mask_sorted = _sort_time_coded_data(self.data.t_exp, self.data.count_mask)
+            _, counts_sum = self._sort_time_coded_data(self.data.t_exp, self._sum_counts(counts))
+            _, count_mask_sorted = self._sort_time_coded_data(self.data.t_exp, self.data.count_mask)
             plt.plot(t, counts_sum/self.parameters.n_tcp, linestyle=':', linewidth=0.3)     #plot average counts, so level if comparable to single traces
             plt.fill_between(t, counts_sum/self.parameters.n_tcp, min(0, np.min(counts_all)), where=np.hstack(count_mask_sorted), 
                              color=f'C{self.parameters.n_tcp}', alpha=0.5)      # fill area underneath average count trace where emission event was detected
@@ -305,7 +322,7 @@ class MinfluxVisualization2D:
         '''
         if counts is None:
             counts = self.data.counts_processed
-        counts_sum = np.hstack(_sum_counts(counts))     # flatten across experiments
+        counts_sum = np.hstack(self._sum_counts(counts))     # flatten across experiments
         if n_bins is None:      # if not given, create bins from 0 to maximum counts
             bins = np.arange(0, int(max(counts_sum)) + 1, d_bins)   # +1 since np.arange() ends with open interval
         else:
@@ -346,6 +363,28 @@ class MinfluxVisualization2D:
         
         if self.save_plots: plt.savefig(self.parameters.file_name + '_count-hist' + self.save_plots, transparent=True)
         plt.show()
+        
+        
+    
+    def _sort_time_coded_data(self, t, data):
+        '''Sort data (second argument) according to corresponding time stamps (first argument). Return sorted timestamps and data, both stacked across experiments.'''
+        t_flat = np.hstack(t)
+        if data[0].ndim == 1:
+            data_flat = np.hstack(data)
+        else:
+            data_flat = np.vstack(data)    
+        sort_ind = np.argsort(t_flat)
+        t_sorted = t_flat[sort_ind]
+        data_sorted = data_flat[sort_ind]
+        return t_sorted, data_sorted
+        
+
+    def _sum_counts(self, counts):
+        '''Calculate sum of counts per cycle across TCP-exposures.'''
+        counts_sum = [np.sum(counts_exp, axis=1) for counts_exp in counts]
+        return counts_sum
+    
+
 
 
 

@@ -9,7 +9,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.signal import lombscargle  #Lomb-Scargle periodogram for spectral analysis of unevenly sampled signals
-from minflux_utils import _nudft
 
 import warnings
 
@@ -68,7 +67,7 @@ class MinfluxAnalysisBeadSample:
                 # ft_cols = []
                 # for counts_col in counts[i].transpose():
                 #     # ft_cols.append(lombscargle(t_on, counts_col, f_data, normalize=True))
-                #     ft_cols.append(np.abs(_nudft(t_on, counts_col, f_data)))
+                #     ft_cols.append(np.abs(self._nudft(t_on, counts_col, f_data)))
                 # fft_data = np.vstack(ft_cols).transpose()
                 fft_data = np.abs(np.fft.rfft(counts[i], axis=0))
             f_data = df*np.fft.rfftfreq(counts[i].shape[0])
@@ -212,7 +211,25 @@ class MinfluxAnalysisBeadSample:
         if not exponent: print('exponent: ', std_fit[2])
         print('\n')
 
-        if self.save_plots: plt.savefig(self.parameters.file_name + '_precisionSeries.png')       
+        if self.save_plots: plt.savefig(self.parameters.file_name + '_precisionSeries.png')      
+        
+        
+        
+        
+    def _nudft(self, t, y, f):     # non-uniform discrete Fourier Transform Type 2
+        # slower than for-loop
+        # f_trans = f[np.newaxis,:].transpose()
+        # ft_arr = y*np.exp(-2*np.pi*1j*t*f_trans)
+        # ft = np.sum(ft_arr, axis=1)
+
+        ft = np.zeros(f.shape, dtype=np.cdouble)
+        for k in  range(len(f)):
+            ft_coeff = y*np.exp(-2*np.pi*1j*t*f[k])
+            ft[k] = np.trapz(ft_coeff, f)
+        
+        # ft = _nudft_cython(t, y, f)
+           
+        return ft
 
 
 

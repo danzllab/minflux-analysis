@@ -9,7 +9,8 @@ import numpy as np
 import warnings
 from scipy.interpolate import griddata
 from scipy.optimize import curve_fit, least_squares
-from minflux_utils import _f_doughnut
+from scipy.signal import fftconvolve
+
 
 
 class PSFmodel:
@@ -38,9 +39,30 @@ class PSFmodel:
         self.grid_size = grid_size
         self.px_size = px_size
         if self.psf_type == 'doughnut':
-            self.psf = _f_doughnut(self.parameters.fwhm, grid_size, px_size)
+            self.psf = self._f_doughnut()
         else:
             raise AttributeError('PSF type not supported.')
+    
+    
+    def _f_doughnut(self):
+        '''
+        Function producing a doughnut PSF (i.e., first-order optical vortex) as grid of intensities.
+
+        Parameters
+        ----------
+        fwhm : full width as half maximum in nm
+        grid_size :  size of coordinate grid per axis in nm; currently only square grids supported
+        px_size :  pixel size of coordinate grid
+
+        Returns
+        -------
+        2D array of pixel intensity values
+        '''
+        coord = np.arange(-self.grid_size/2, self.grid_size/2, self.px_size)
+        xx, yy = np.meshgrid(coord, coord)
+        rr2 = xx**2 + yy**2
+        f = rr2/self.parameters.fwhm**2 * np.exp(-4*np.log(2)*rr2/self.parameters.fwhm**2)  # values not normalized
+        return f
 
 
 

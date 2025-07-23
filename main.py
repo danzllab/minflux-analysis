@@ -136,13 +136,13 @@ if __name__ == '__main__':
     mfxdata = load_data(mfxparam)   # optional integer parameter determined how many iterations to load (-1: entire file)
     
     #%% minflux localization
-    psf_model = PSFmodel('doughnut', mfxparam)  # initialize PSF-model (optionally, use experimental calibration instead)
+    psf_model = PSFmodel('doughnut', mfxparam)  # initialize PSF-model (for experimental calibration, use PSFcalibration instead); currently, only "doughnut" implemented
     psf_model.create_psf_model(300, 0.2)    # grid size, pixel size
     
     mfxloc = localization(mfxparam, mfxdata, psf=psf_model, plot_mle=False)
     
     #%% data visualization
-    mfxvis = visualization(mfxparam, mfxdata, save_plots=save_plots, plot_types=['localization_traces', 'count_histogram', 'gauss'])
+    mfxvis = visualization(mfxparam, mfxdata, save_plots=save_plots, plot_types=['count_traces', 'scatter_tile', 'gauss'])
     
     #%% data analysis
     # mfxanalysis = analysis(mfxparam, mfxdata, mfxloc, save_plots=save_plots) 

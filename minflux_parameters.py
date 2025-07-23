@@ -51,7 +51,7 @@ class MinfluxParameters:
         self.d_grid = 0
         self.n_grid = 1
        
-        self.estimator = 'mle'
+        self.estimator = 'lms'
         self.filter_type = 'box'
         self.subtract_bg = False
         self.subtract_drifts = 11
