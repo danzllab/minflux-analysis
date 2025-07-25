@@ -2,7 +2,7 @@
 
 ## Description
 
-Custom software package for processing and analysis of MINFLUX-data (Balzarotti _et al._, Science **355**, 606-612 (2017). DOI: [10.1126/science.aak9913](https://doi.org/10.1126/science.aak9913)).
+Custom Python software package for processing and analysis of MINFLUX-data (Balzarotti _et al._, Science **355**, 606-612 (2017). DOI: [10.1126/science.aak9913](https://doi.org/10.1126/science.aak9913)).
 The software package comprises the modules minflux_parameters, minflux_dataIO, minflux_psf, minflux_localization, minflux_visualization, and minflux_analysis. An example workflow is given in main.py:
 * First, load MINFLUX-parameter profile. All parameters are saved to a text file for documentation.
 * Load MINFLUX-data using minflux_dataIO, create a grid of tip/tilt mirror positions and time stamps.
