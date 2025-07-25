@@ -10,7 +10,7 @@ import time
 
 from minflux_parameters import MinfluxParameters
 from minflux_dataIO import DataMinflux
-from minflux_psf import PSFmodel
+from minflux_psf import PSFmodel, PSFcalibration
 from minflux_localization import MinfluxLocalization2D
 from minflux_visualization import MinfluxVisualization2D
 from minflux_analysis import MinfluxAnalysisBeadSample, MinfluxAnalysisBlinkingSample
@@ -68,9 +68,7 @@ def localization(mfxparam, mfxdata, psf=None, plot_mle=False):
     
     
 def visualization(mfxparam, mfxdata, save_plots=False, plot_types=['gauss', 'count_traces', 'scatter_tile']):
-    '''
-    implemented plot_types: count_traces, count_histogram, scatter_tile, scatter_time, localization_histogram, gauss, localization_traces
-    '''
+    '''Implemented plot_types: count_traces, count_histogram, scatter_tile, scatter_time, localization_histogram, gauss, localization_traces'''
     
     t1 = time.time()
     
@@ -107,13 +105,16 @@ def visualization(mfxparam, mfxdata, save_plots=False, plot_types=['gauss', 'cou
 
     
 def analysis(mfxparam, mfxdata, mfxloc, save_plots=False):
+    '''
+    Further analysis of minflux-data. Currently, Fourier transform of counts traces as well as series of different photon binning numers are implemented.
+    Extensions to be implemented as needed. No functions added for blinking sample yet.
+    '''
     t1 = time.time()
     
     mfxanalysis = MinfluxAnalysisBeadSample(mfxparam, mfxdata, mfxloc, t_crop=None,
                                             save_plots=save_plots)
-    mfxanalysis.fft_counts(average_exp=True, sum_counts=False, log_y=False, f_lim=[0.1, None])   
-   
-    # mfxanalysis.precision_series([2000, 5000, 500], average_exp=True, exponent=None, plot_localization_series=False)
+    mfxanalysis.fft_counts(average_exp=True, sum_counts=False, log_y=False, f_lim=[0.1, None])      # peaks in Fourier transform of bead trace might indicate vibrations
+    mfxanalysis.precision_series([2000, 5000, 500], average_exp=True, exponent=None, plot_localization_series=False)
     
     
     
@@ -127,7 +128,7 @@ def analysis(mfxparam, mfxdata, mfxloc, save_plots=False):
 
 #%% functions executed here
 if __name__ == '__main__':
-    sample_type = 'blink'   # sets parameter profile
+    sample_type = 'bead'   # sets parameter profile
     save_plots = '.png'     # file ending or None if don't want to save
     
     mfxparam = MinfluxParameters(sample_type)   #load parameter profile
@@ -135,17 +136,36 @@ if __name__ == '__main__':
     #%% load minflux counts from file
     mfxdata = load_data(mfxparam)   # optional integer parameter determined how many iterations to load (-1: entire file)
     
+    # #%% example psf calibration workflow from experimental data
+    # n_px = 512      # numer of pixels per axis
+    # psfdata = data_raw = np.fromfile('minflux_data\\20220422_0101_psfCalibration.rcstk', dtype=np.int16).reshape(-1, n_px, n_px)    # read raw data 
+    # psfdata = psfdata[:, 180:210, 390:420]          # crop to isolate single bead
+    # psf_experimental = PSFcalibration(psfdata, 27)       # initialize psf-calibration with 27 nm pixel size
+
+    # # fit single model function to single frames to extract center coordinates
+    # # psf_experimental.fit_single_frames(modelfun={'name': 'polynomial', 'k': 2})
+    # psf_experimental.fit_single_frames(modelfun={'name': 'doughnut'})
+    # # correct drifts between frames
+    # psf_experimental.correct_drifts(k_smooth=2, roi=[600, 600])
+    # # fit PSF to obtain model
+    # # fitresult, fitdata = psf_experimental.psf_fit(modelfun={'name': 'doughnut'})
+    # fitresult, fitdata = psf_experimental.psf_fit(modelfun={'name': 'polynomial', 'k': 9})
+    
+    # psf_calibrated_data = psf_experimental.set_psf(500, 0.5)
+    # # psf_interpolated = psf_experimental.interpolate_psf_image(500, 0.5)
+    
     #%% minflux localization
     psf_model = PSFmodel('doughnut', mfxparam)  # initialize PSF-model (for experimental calibration, use PSFcalibration instead); currently, only "doughnut" implemented
     psf_model.create_psf_model(300, 0.2)    # grid size, pixel size
     
-    mfxloc = localization(mfxparam, mfxdata, psf=psf_model, plot_mle=False)
+    mfxloc = localization(mfxparam, mfxdata, psf=psf_model, plot_mle=True)
+    # mfxloc = localization(mfxparam, mfxdata, psf=psf_experimental, plot_mle=True)
     
     #%% data visualization
     mfxvis = visualization(mfxparam, mfxdata, save_plots=save_plots, plot_types=['count_traces', 'scatter_tile', 'gauss'])
     
-    #%% data analysis
-    # mfxanalysis = analysis(mfxparam, mfxdata, mfxloc, save_plots=save_plots) 
+    #%% data analysis - not cleaned up and documented to the same standard as other modules
+    mfxanalysis = analysis(mfxparam, mfxdata, mfxloc, save_plots=save_plots) 
     
     # if plots are saved, also save parameters to .txt file
     if save_plots:

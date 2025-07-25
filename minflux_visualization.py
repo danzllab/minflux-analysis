@@ -9,22 +9,20 @@ import warnings
 
 import numpy as np
 from scipy.signal import fftconvolve
-from scipy.stats import poisson
+# from scipy.stats import poisson
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import locale
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')  # inserts thousands separator
-from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 
 class MinfluxVisualization2D:
-    
+    '''Visualize minflux-counts and localizations.'''
     def __init__(self, parameters, data, save_plots=False,
                  plot_style='default'):
-       
         self.parameters = parameters
         self.data = data
         plt.style.use(plot_style)

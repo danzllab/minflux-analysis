@@ -38,12 +38,23 @@ class MinfluxAnalysisBeadSample:
         
     def fft_counts(self, counts=None, average_exp=True, sum_counts=True, f_lim=None, 
                    log_x=False, log_y=True):
+        '''
+        Calculate fast Fourier transform of count traces. Assume equal time invervals between counts.
+
+        Parameters
+        ----------
+        counts : specify count traces or used thresholded counts of self.localize
+        average_exp : average Fourier transforms across experiments; will crop count traces to length of shortest experiment
+        sum_counts : sum counts across TCP-exposures or plot them separately
+        f_lim : frequency limits (lower, upper); ignored if none
+        log_x : if true, set x-scale to logarithmic
+        log_y : if true, set y-scale to logarithmic
+        '''
         if counts is None:
             counts = self.localize.counts_thresh
         
         if average_exp:     #avoid interpolation by cropping all exp to length of shortest
             len_min = np.min([c.shape[0] for c in counts])
-            len_min = 5000
             counts = [c[:len_min] for c in counts]    
         if sum_counts: 
             counts_sum = self.localize.sum_counts(counts)
@@ -118,7 +129,7 @@ class MinfluxAnalysisBeadSample:
 
     def fft_localizations(self, localizations=None, average_dims=False, f_lim=None, 
                           log_x=False, log_y=True):
-          
+        '''TO BE IMPLEMENTED'''
         if localizations is None:
             localizations = self.data.localizations
             
@@ -132,11 +143,10 @@ class MinfluxAnalysisBeadSample:
             if n_below_thresh > 0:
                 warnings.warn(f'In exp {i}, {n_below_thresh} cycles have counts below the threshold. Might lead to artifacts in fft!')
              
-            
-         
         
     def precision_series(self, n_photon_steps, counts=None, estimator='lms',
                          average_exp=False, exponent=None, plot_localization_series=False):
+        '''Calculate localization precision for a series of bin numbers. Contains unresolved bugs.'''
         if counts is None:
             counts = self.localize.counts_raw
         n_photon_series = np.arange(*n_photon_steps)

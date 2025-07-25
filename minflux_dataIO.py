@@ -6,27 +6,24 @@ Created on Wed Feb  1 16:49:29 2023
 """
 
 import numpy as  np
-import pandas as pd
 
-from minflux_parameters import MinfluxParameters
 
 class DataMinflux:
-    
-    def __init__(self, parameters, n_cols=7, cols_counts=[0, 4], col_tile=4, n_read=-1, offset=1486):
-        '''
-        Initialize minflux data object with minflux-parameters and characteristics depending on format of raw data.
-        Loads data from ".4P_mfx" file type, but can be easily adapted to other raw data formats.
+    '''
+    Initialize minflux data object with minflux-parameters and characteristics depending on format of raw data.
+    Loads data from ".4P_mfx" file type, but can be easily adapted to other raw data formats.
 
-        Parameters
-        ----------
-        parameters : minflux-parameters object.
-        n_cols : number of saved columns per minflux cycle in raw data file
-        cols_counts : specifies range of columns containing photon counts
-        col_tile : column containing index of tip/tilt mirror position
-        n_read : how many minflux-cycles to read; negative values read entire file
-        offset : how many lines to skip at beginning of file (corresponding to metadata, depends on file format)
+    Parameters
+    ----------
+    parameters : minflux-parameters object.
+    n_cols : number of saved columns per minflux cycle in raw data file
+    cols_counts : specifies range of columns containing photon counts
+    col_tile : column containing index of tip/tilt mirror position
+    n_read : how many minflux-cycles to read; negative values read entire file
+    offset : how many lines to skip at beginning of file (corresponding to metadata, depends on file format)
 
-        '''
+    '''
+    def __init__(self, parameters, n_cols=7, cols_counts=[0, 4], col_tile=4, n_read=-1, offset=1080):
         ## offsets for datasets:
         # 20221223_0201: 1486
         # 20221006_0401: 1080
@@ -54,7 +51,7 @@ class DataMinflux:
         
         n_tiles_data = max(self.ind_tile) + 1
         if n_tiles_data < n_grid:   # assert that number of positions specified in parameters does not exceed positions in data 
-            raise ValueError(f'Wrong "n_grid" parameter. Data contains {n_tiles_data} tiles.')
+            raise ValueError(f'Wrong "n_grid" parameter. Data contain {n_tiles_data} tiles.')
         
         self.ind_select = [self.ind_tile % n_grid == i for i in range(n_grid)]  # group localizations to corresponding tip/tilt positions (if grid is rescanned, ind_tile increases beyond n_grid)
         

@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 
 
 class MinfluxLocalization2D:
+    '''Initialize minflux localization with parameters and data. Optional: specify psf (required for MLE localization).'''
     def __init__(self, parameters, data, psf_data=None):
-        '''Initialize minflux localization with parameters and data. Optional: specify psf (required for MLE localization).'''
         # ensure same data format if no grid was generated; list with entries of shape (n_cycles, n_tcp) per tip/tilt exposure; each entry in list called "_exp" for experiment
         if hasattr(data, 'counts_tiles'):
             self.counts_raw = data.counts_tiles
@@ -218,11 +218,17 @@ class MinfluxLocalization2D:
                                    np.ones(sum_exp.shape, dtype=bool), 
                                    np.zeros(sum_exp.shape, dtype=bool))
             # assume constant background for every experiment, but not for across TCP positions
-            bg_exp = np.average(counts_exp[mask_bg_exp], axis=0)
-            counts_background.append(bg_exp)
+            if np.count_nonzero(mask_bg_exp):
+                bg_exp = np.average(counts_exp[mask_bg_exp], axis=0)
+                counts_background.append(bg_exp)
+            else:
+               warnings.warn('No background counts detected. Set to 1e-32.')
+               bg_exp = 1e-32*np.ones(counts_exp.shape[1])  #set to infinitesimally small value above 0
+               counts_background.append(bg_exp)
+                
             if subtract_background:               
                 counts_exp -= bg_exp
-            
+                    
             # append thresholded counts, threshold mask, and time points at which active emitter was detected
             counts_thresh.append(counts_exp[mask_exp])
             count_mask.append(mask_exp)
