@@ -169,14 +169,15 @@ class MinfluxVisualization2D:
     def plot_localizations_gauss(self, localizations=None, px_size=0.1, 
                                     sigma=None, vlim=None, xyrange=None):
         '''
-        Visualize localizations as 2D-Gaussians. Extent deduced from localizations.
+        Visualize localizations as 2D-Gaussians. 
 
         Parameters
         ----------
         localizations : specify or use the ones saved in minflux data.
         px_size : pixel size of output image in nm.
         sigma : width of Gaussians; single value or array containing one value per localization.
-        vlim : Lower and upper limit of value range displayed in color map; if none, show full range.
+        vlim : lower and upper limit of value range displayed in color map; if none, show full range.
+        xyrange: plot range in format [[x_min, x_max], [y_min, y_max]]; if none, deduced from localizations.
         '''
         if localizations is None:
             localizations = self.data.localizations
