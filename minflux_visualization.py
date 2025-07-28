@@ -40,7 +40,7 @@ class MinfluxVisualization2D:
                 grid_size = self.data.grid_size
             except AttributeError:
                 warnings.warn('Not grid size given. Set to 2 * L.')
-                grid_size = 2*self.data.L
+                grid_size = 2*self.parameters.L
         if px_size is None:
             try:
                 px_size = self.data.px_size_grid
@@ -55,10 +55,13 @@ class MinfluxVisualization2D:
            coord = [np.linspace(0, gs, round(gs/px_size)) for gs in grid_size]
         else:       # create square coordinate grid 
             coord = [np.linspace(0, grid_size, round(grid_size/px_size)), ]*2
-        xx, yy = np.meshgrid(coord[1] - center[1], coord[0] - center[0])  #create grids corresponding to x and y coordinates
+        if hasattr(center, '__iter__'):
+            xx, yy = np.meshgrid(coord[1] - center[1], coord[0] - center[0])  #create grids corresponding to x and y coordinates
+        else:
+            xx, yy = np.meshgrid(coord[1] - center, coord[0] - center)  #create grids corresponding to x and y coordinates
         rr2 = xx**2 + yy**2
         sigma = fwhm/(2*np.sqrt(2*np.log(2)))
-        pixel_intensities = intensity/(sigma*np.sqrt(2*np.pi))*np.exp(-rr2/(2*sigma**2))
+        pixel_intensities = intensity/(2*np.pi*sigma**2)*np.exp(-rr2/(2*sigma**2))
         
         return pixel_intensities
     
@@ -75,9 +78,9 @@ class MinfluxVisualization2D:
 
         Parameters
         ----------
-        localizations : specify or use the ones saved in minflux data
-        show_lines : boolean indicating whether to display lines connecting subsequent localizations
-        color_code : color-code according to localization time ("time") or experiment/tile index ("tile")
+        localizations : specify or use the ones saved in minflux data.
+        show_lines : boolean indicating whether to display lines connecting subsequent localizations.
+        color_code : color-code according to localization time ("time") or experiment/tile index ("tile").
 
         '''
         if localizations is None:
@@ -120,10 +123,10 @@ class MinfluxVisualization2D:
 
         Parameters
         ----------
-        localizations : specify or use the ones saved in minflux data
-        px_size : pixel size of output image in nm
-        vlim : Lower and upper limit of value range displayed in color map; if none, show full range
-        shift_hist : boolean indicating whether to overlay histogram with versions shifted by +-1 pixel to generate smoother visualization
+        localizations : specify or use the ones saved in minflux data.
+        px_size : pixel size of output image in nm.
+        vlim : Lower and upper limit of value range displayed in color map; if none, show full range.
+        shift_hist : boolean indicating whether to overlay histogram with versions shifted by +-1 pixel to generate smoother visualization.
         '''
         if localizations is None:
             localizations = self.data.localizations
@@ -164,16 +167,16 @@ class MinfluxVisualization2D:
     
     
     def plot_localizations_gauss(self, localizations=None, px_size=0.1, 
-                                    sigma=None, vlim=None):
+                                    sigma=None, vlim=None, xyrange=None):
         '''
         Visualize localizations as 2D-Gaussians. Extent deduced from localizations.
 
         Parameters
         ----------
-        localizations : specify or use the ones saved in minflux data
-        px_size : pixel size of output image in nm
-        sigma : width of Gaussians; single value or array containing one value per localization
-        vlim : Lower and upper limit of value range displayed in color map; if none, show full range
+        localizations : specify or use the ones saved in minflux data.
+        px_size : pixel size of output image in nm.
+        sigma : width of Gaussians; single value or array containing one value per localization.
+        vlim : Lower and upper limit of value range displayed in color map; if none, show full range.
         '''
         if localizations is None:
             localizations = self.data.localizations
@@ -183,10 +186,14 @@ class MinfluxVisualization2D:
             # TODO might calculate uncertainty from CRB?
         fwhm = 2.355 * sigma
         
-        n_bins = [round((max(loc_all[:,0]) - min(loc_all[:,0]))/px_size),
-                  round((max(loc_all[:,1]) - min(loc_all[:,1]))/px_size)]
-        xyrange = [[min(loc_all[:,0]), min(loc_all[:,0]) + (n_bins[0] - 2)*px_size],
-                   [min(loc_all[:,1]), min(loc_all[:,1]) + (n_bins[1] - 2)*px_size]]
+        if xyrange is None:
+            n_bins = [round((max(loc_all[:,0]) - min(loc_all[:,0]))/px_size),
+                      round((max(loc_all[:,1]) - min(loc_all[:,1]))/px_size)]
+            xyrange = [[min(loc_all[:,0]), min(loc_all[:,0]) + (n_bins[0] - 2)*px_size],
+                       [min(loc_all[:,1]), min(loc_all[:,1]) + (n_bins[1] - 2)*px_size]]
+        else:
+            n_bins = [round((xyrange[0][1] - xyrange[0][0])/px_size + 1),
+                      round((xyrange[1][1] - xyrange[1][0])/px_size + 1)]
         
         fig, ax = self._subplots_template()
         ax.set_aspect('equal')
@@ -228,9 +235,9 @@ class MinfluxVisualization2D:
 
         Parameters
         ----------
-        localizations : specify or use the ones saved in minflux data
-        p_drift : polynomial coefficients fit to localizations for drift correction; if given, drifts are overlaid with localizations; can be separate polynomials for experiments or common polynomial for all
-        centering : if True, center localizations around 0 for both axes
+        localizations : specify or use the ones saved in minflux data.
+        p_drift : polynomial coefficients fit to localizations for drift correction; if given, drifts are overlaid with localizations; can be separate polynomials for experiments or common polynomial for all.
+        centering : if True, center localizations around 0 for both axes.
         '''
         if localizations is None:
             localizations = self.data.localizations
@@ -276,8 +283,8 @@ class MinfluxVisualization2D:
 
         Parameters
         ----------
-        counts : specify or use the ones saved in minflux data
-        show_trace_segmentation : boolean indicating whether to overlay average counts and detected emission events
+        counts : specify or use the ones saved in minflux data.
+        show_trace_segmentation : boolean indicating whether to overlay average counts and detected emission events.
         '''
         if counts is None:
             counts = self.data.counts_processed
@@ -308,15 +315,10 @@ class MinfluxVisualization2D:
 
         Parameters
         ----------
-        counts : specify or use the ones saved in minflux data
-        n_bins : specify number of bins to deduce from maximum counts and d_bins
-        d_bins : distance/size of bins
-        log : boolean indicating whether to plot histogram on logarithmic scale (y-axis only)
-
-        Returns
-        -------
-        None.
-
+        counts : specify or use the ones saved in minflux data.
+        n_bins : specify number of bins to deduce from maximum counts and d_bins.
+        d_bins : distance/size of bins.
+        log : boolean indicating whether to plot histogram on logarithmic scale (y-axis only).
         '''
         if counts is None:
             counts = self.data.counts_processed

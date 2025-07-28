@@ -114,7 +114,7 @@ def analysis(mfxparam, mfxdata, mfxloc, save_plots=False):
     mfxanalysis = MinfluxAnalysisBeadSample(mfxparam, mfxdata, mfxloc, t_crop=None,
                                             save_plots=save_plots)
     mfxanalysis.fft_counts(average_exp=True, sum_counts=False, log_y=False, f_lim=[0.1, None])      # peaks in Fourier transform of bead trace might indicate vibrations
-    mfxanalysis.precision_series([2000, 5000, 500], average_exp=True, exponent=None, plot_localization_series=False)
+    # mfxanalysis.precision_series([2000, 5000, 500], average_exp=True, exponent=None, plot_localization_series=False)
     
     
     
@@ -162,10 +162,10 @@ if __name__ == '__main__':
     # mfxloc = localization(mfxparam, mfxdata, psf=psf_experimental, plot_mle=True)
     
     #%% data visualization
-    mfxvis = visualization(mfxparam, mfxdata, save_plots=save_plots, plot_types=['count_traces', 'scatter_tile', 'gauss'])
+    mfxvis = visualization(mfxparam, mfxdata, save_plots=save_plots, plot_types=['gauss'])
     
-    #%% data analysis - not cleaned up and documented to the same standard as other modules
-    mfxanalysis = analysis(mfxparam, mfxdata, mfxloc, save_plots=save_plots) 
+    # #%% data analysis - not cleaned up and documented to the same standard as other modules
+    # mfxanalysis = analysis(mfxparam, mfxdata, mfxloc, save_plots=save_plots) 
     
     # if plots are saved, also save parameters to .txt file
     if save_plots:

@@ -43,12 +43,12 @@ class MinfluxAnalysisBeadSample:
 
         Parameters
         ----------
-        counts : specify count traces or used thresholded counts of self.localize
-        average_exp : average Fourier transforms across experiments; will crop count traces to length of shortest experiment
-        sum_counts : sum counts across TCP-exposures or plot them separately
-        f_lim : frequency limits (lower, upper); ignored if none
-        log_x : if true, set x-scale to logarithmic
-        log_y : if true, set y-scale to logarithmic
+        counts : specify count traces or used thresholded counts of self.localize.
+        average_exp : average Fourier transforms across experiments; will crop count traces to length of shortest experiment.
+        sum_counts : sum counts across TCP-exposures or plot them separately.
+        f_lim : frequency limits (lower, upper); ignored if none.
+        log_x : if true, set x-scale to logarithmic.
+        log_y : if true, set y-scale to logarithmic.
         '''
         if counts is None:
             counts = self.localize.counts_thresh

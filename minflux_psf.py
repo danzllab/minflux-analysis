@@ -20,8 +20,8 @@ class PSFmodel:
 
     Parameters
     ----------
-    psf_type : currently only "doughnut" implemented
-    parameters : minflux-parameter file
+    psf_type : currently only "doughnut" implemented.
+    parameters : minflux-parameter file.
     '''    
     def __init__(self, psf_type, parameters):
         self.psf_type = psf_type
@@ -34,8 +34,8 @@ class PSFmodel:
 
         Parameters
         ----------
-        grid_size : size of coordinate grid per axis in nm; currently only square grids supported
-        px_size : pixel size of coordinate grid
+        grid_size : size of coordinate grid per axis in nm; currently only square grids supported.
+        px_size : pixel size of coordinate grid.
         '''
         self.grid_size = grid_size
         self.px_size = px_size
@@ -51,13 +51,13 @@ class PSFmodel:
 
         Parameters
         ----------
-        fwhm : full width as half maximum in nm
-        grid_size :  size of coordinate grid per axis in nm; currently only square grids supported
-        px_size :  pixel size of coordinate grid
+        fwhm : full width as half maximum in nm.
+        grid_size :  size of coordinate grid per axis in nm; currently only square grids supported.
+        px_size :  pixel size of coordinate grid.
 
         Returns
         -------
-        2D array of pixel intensity values
+        2D array of pixel intensity values.
         '''
         coord = np.arange(-self.grid_size/2, self.grid_size/2, self.px_size)
         xx, yy = np.meshgrid(coord, coord)
@@ -74,9 +74,9 @@ class PSFcalibration:
 
     Parameters
     ----------
-    frames_raw : raw frames as numpy array; either single 2D-image or stack of multiple images to increase contrast
-    px_size : pixel size of raw data
-    psf_model : type of function to use for modeling PSF; "gauss", "doughnut", "poly" implemented; dictionary with "name" and function-specific parameters (currently only "k" for polynomial order)
+    frames_raw : raw frames as numpy array; either single 2D-image or stack of multiple images to increase contrast.
+    px_size : pixel size of raw data.
+    psf_model : type of function to use for modeling PSF; "gauss", "doughnut", "poly" implemented; dictionary with "name" and function-specific parameters (currently only "k" for polynomial order).
     '''
     def __init__(self, frames_raw, px_size, psf_model={'name': 'polynomial', 'k': 4}):
         self.frames_raw = frames_raw
@@ -94,19 +94,19 @@ class PSFcalibration:
         
     def _f_gauss(self, xy, x0=None, y0=None, fwhm=300, intensity=100):
         '''
-        2D Gaussian function
+        2D Gaussian function.
 
         Parameters
         ----------
         xy : coordinate mesh
-        x0 : peak position along x; specify or assign as center of coordinate mesh
-        y0 : peak position along y; specify or assign as center of coordinate mesh
-        fwhm : full width at half maximum
-        intensity : overall intensity; not normalized, so arbitrary value
+        x0 : peak position along x; specify or assign as center of coordinate mesh.
+        y0 : peak position along y; specify or assign as center of coordinate mesh.
+        fwhm : full width at half maximum.
+        intensity : overall intensity; not normalized, so arbitrary value.
 
         Returns
         -------
-        2D array with pixel intensity values
+        2D array with pixel intensity values.
         '''
         if x0 is None: 
             x0 = np.mean(xy[0])
@@ -121,19 +121,19 @@ class PSFcalibration:
     
     def _f_doughnut(self, xy, x0=None, y0=None, fwhm=300, intensity=100):
         '''
-        2D "doughnut" function, i.e., first-order optical vortex
+        2D "doughnut" function, i.e., first-order optical vortex.
 
         Parameters
         ----------
-        xy : coordinate mesh
-        x0 : peak position along x; specify or assign as center of coordinate mesh
-        y0 : peak position along y; specify or assign as center of coordinate mesh
-        fwhm : full width at half maximum
-        intensity : overall intensity; not normalized, so arbitrary value
+        xy : coordinate mesh.
+        x0 : peak position along x; specify or assign as center of coordinate mesh.
+        y0 : peak position along y; specify or assign as center of coordinate mesh.
+        fwhm : full width at half maximum.
+        intensity : overall intensity; not normalized, so arbitrary value.
 
         Returns
         -------
-        2D array with pixel intensity values
+        2D array with pixel intensity values.
         '''
         if x0 is None: 
             x0 = np.mean(xy[0])
@@ -148,19 +148,19 @@ class PSFcalibration:
     
     def _f_polynomial(self, xy, x0=None, y0=None, p=None, k=4):
         '''
-        2D polynomial function
+        2D polynomial function.
 
         Parameters
         ----------
-        xy : coordinate mesh
-        x0 : peak position along x; specify or assign as center of coordinate mesh
-        y0 : peak position along y; specify or assign as center of coordinate mesh
-        p : polynomial coefficients; if none, set all to 1
-        k : order of polynomial
+        xy : coordinate mesh.
+        x0 : peak position along x; specify or assign as center of coordinate mesh.
+        y0 : peak position along y; specify or assign as center of coordinate mesh.
+        p : polynomial coefficients; if none, set all to 1.
+        k : order of polynomial.
 
         Returns
         -------
-        2D array with pixel intensity values
+        2D array with pixel intensity values.
         '''
         if x0 is None: 
             x0 = np.mean(xy[0])
@@ -220,12 +220,12 @@ class PSFcalibration:
         
     def correct_drifts(self, k_smooth = 10, roi=None):
         '''
-        Use previously obtained drifts_raw to compensate drifts between frames
+        Use previously obtained drifts_raw to compensate drifts between frames.
 
         Parameters
         ----------
-        k_smooth : smoothing factor for drift correction (width of box filter, in frame numbers)
-        roi : specify size of region of interest in nm for cropping drift-corrected frames around center; single value for square or list with sizes for x and y; if none, use maximum width compatible with magnitude of drifts (without extrapolating)
+        k_smooth : smoothing factor for drift correction (width of box filter, in frame numbers).
+        roi : specify size of region of interest in nm for cropping drift-corrected frames around center; single value for square or list with sizes for x and y; if none, use maximum width compatible with magnitude of drifts (without extrapolating).
 
         Returns
         -------
@@ -264,8 +264,8 @@ class PSFcalibration:
 
         Parameters
         ----------
-        modelfun : model function; dictionary with name and model-specific parameters
-        frame_avg : averaged frame to fit model function to; if none, use class attribude
+        modelfun : model function; dictionary with name and model-specific parameters.
+        frame_avg : averaged frame to fit model function to; if none, use class attribude.
 
         Returns
         -------
@@ -312,13 +312,13 @@ class PSFcalibration:
 
         Parameters
         ----------
-        grid_size : size of coordinate grid per axis in nm; currently only square grids supported
-        px_size_grid : pixel size in nm at which to calculate PSF-grid, or use same as images used for calibration
-        p_fit : Specify fit parameters, or use previously obtained ones; exclude center coordinates
+        grid_size : size of coordinate grid per axis in nm; currently only square grids supported.
+        px_size_grid : pixel size in nm at which to calculate PSF-grid, or use same as images used for calibration.
+        p_fit : Specify fit parameters, or use previously obtained ones; exclude center coordinates.
         
         Returns
         -------
-        PSF according to fit function at spec; ensure only positive values
+        PSF according to fit function at spec; ensure positive values.
         '''
         if px_size_grid is None:
             px_size_grid = self.px_size_img
@@ -346,9 +346,9 @@ class PSFcalibration:
 
         Parameters
         ----------
-        grid_size : size of coordinate grid per axis in nm; should be smaller than image size; currently only square grids supported
-        px_size_grid : pixel size in nm at which to calculate PSF-grid, or use same as images used for calibration
-        img_psf : image of PSF; if none, use averaged frames
+        grid_size : size of coordinate grid per axis in nm; should be smaller than image size; currently only square grids supported.
+        px_size_grid : pixel size in nm at which to calculate PSF-grid, or use same as images used for calibration.
+        img_psf : image of PSF; if none, use averaged frames.
 
         Returns
         -------

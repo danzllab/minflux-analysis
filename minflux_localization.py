@@ -76,10 +76,10 @@ class MinfluxLocalization2D:
 
         Parameters
         ----------
-        filter_type : currently "box", "gauss", "triangle implemented"
-        t_filter : time constant of filter; width of box, sigma of gauss, or rise-/fall-time for triangle
-        counts : specify count traces or use processed counts
-        normalize : normalize via division of filter weights by their sum
+        filter_type : currently "box", "gauss", "triangle implemented".
+        t_filter : time constant of filter; width of box, sigma of gauss, or rise-/fall-time for triangle.
+        counts : specify count traces or use processed counts.
+        normalize : normalize via division of filter weights by their sum.
 
         Returns
         -------
@@ -120,18 +120,18 @@ class MinfluxLocalization2D:
 
         Parameters
         ----------
-        threshold : count threshold; either list containing lower and upper or single value (lower threshold; multiplied by 2 to obtain upper)
-        counts : specify count traces or use processed counts
-        cfr_max : maximum center frequency ratio (fraction of counts in center exposure)
-        t_min : minimum on-time in s
-        bin_var : how many cycles to bin for calculating local variance of count levels; if none, no variance-based thresholding is performed
-        thresh_var : threshold for local variance of summed counts relative to count levels
-        subtract_background : boolean indicating if background is subtracted from count traces (not modeled!); not recommended
+        threshold : count threshold; either list containing lower and upper or single value (lower threshold; multiplied by 2 to obtain upper).
+        counts : specify count traces or use processed counts.
+        cfr_max : maximum center frequency ratio (fraction of counts in center exposure).
+        t_min : minimum on-time in s.
+        bin_var : how many cycles to bin for calculating local variance of count levels; if none, no variance-based thresholding is performed.
+        thresh_var : threshold for local variance of summed counts relative to count levels.
+        subtract_background : boolean indicating if background is subtracted from count traces (not modeled!); not recommended.
 
         Returns
         -------
-        counts_thresh : counts corresponding to time points when single-molecule emission was detected
-        count_mask : mask indicating time points when single-molecule emission was detected
+        counts_thresh : counts corresponding to time points when single-molecule emission was detected.
+        count_mask : mask indicating time points when single-molecule emission was detected.
 
         '''
         
@@ -248,8 +248,8 @@ class MinfluxLocalization2D:
 
         Parameters
         ----------
-        counts : specify count traces or use raw counts
-        n_bin : how many counts to bin
+        counts : specify count traces or use raw counts.
+        n_bin : how many counts to bin.
 
         Returns
         -------
@@ -329,7 +329,7 @@ class MinfluxLocalization2D:
 
         Returns
         -------
-        localizations
+        localizations.
         '''
         localizations = []
         if counts_thresh is None:
@@ -359,17 +359,17 @@ class MinfluxLocalization2D:
 
     def MLE_numeric(self, counts, plot_mle=False, ind_exp=0):
         '''
-        Numeric maximum likelihood estimation for 
+        Numeric maximum likelihood estimation using direct grid search. 
 
         Parameters
         ----------
-        counts : photon counts; sets of counts along axis 0 with TCP-exposures along axis 1
-        plot_mle : boolean indicating whether to plot p-grids and localization for every 1000th localization
-        ind_exp : index of experiment; to use corresponding SBRs
+        counts : photon counts; sets of counts along axis 0 with TCP-exposures along axis 1.
+        plot_mle : boolean indicating whether to plot p-grids and localization for every 1000th localization.
+        ind_exp : index of experiment; to use corresponding SBRs.
 
         Returns
         -------
-        r_arr : Array of estimated coordinates (in nm); localizations along axis 0 with x- and y-coordinates along axis 1
+        r_arr : Array of estimated coordinates (in nm); localizations along axis 0 with x- and y-coordinates along axis 1.
         '''
         if not hasattr(self.data, 'target_coordinates'):
             self.data.create_target_coordinates()
@@ -429,16 +429,16 @@ class MinfluxLocalization2D:
    
     def LMS(self, counts, ind_exp=0):
         '''
-        linearized least mean square estimator according to Balzarotti et al., Science (2017) (SI 3.2.1)        
+        linearized least mean square estimator according to Balzarotti et al., Science (2017) (SI 3.2.1).      
 
         Parameters
         ----------
-        counts : photon counts; sets of counts along axis 0 with TCP-exposures along axis 1
-        ind_exp : index of experiment; to use corresponding SBRs
+        counts : photon counts; sets of counts along axis 0 with TCP-exposures along axis 1.
+        ind_exp : index of experiment; to use corresponding SBRs.
 
         Returns
         -------
-        r_estimate : Array of estimated coordinates (in nm); localizations along axis 0 with x- and y-coordinates along axis 1
+        r_estimate : Array of estimated coordinates (in nm); localizations along axis 0 with x- and y-coordinates along axis 1.
 
         ''' 
         if not hasattr(self.data, 'target_coordinates'):
@@ -463,17 +463,17 @@ class MinfluxLocalization2D:
     
     def mLMS(self, counts, ind_exp=0, beta=None):
         '''
-        modified least mean square estimator according to Balzarotti et al., Science (2017) (SI 3.2.2)        
+        modified least mean square estimator according to Balzarotti et al., Science (2017) (SI 3.2.2).      
 
         Parameters
         ----------
-        counts : photon counts; sets of counts along axis 0 with TCP-exposures along axis 1
-        ind_exp : index of experiment; to use corresponding SBRs
-        beta : correction factors; (beta_0, beta_1, ..., beta_k) --> sum(beta_k * p^k for k in range(len(beta))); k deduced from length of beta; if none, use parameters from Balzarotti et al., Science (2017)
+        counts : photon counts; sets of counts along axis 0 with TCP-exposures along axis 1.
+        ind_exp : index of experiment; to use corresponding SBRs.
+        beta : correction factors; (beta_0, beta_1, ..., beta_k) --> sum(beta_k * p^k for k in range(len(beta))); k deduced from length of beta; if none, use parameters from Balzarotti et al., Science (2017).
 
         Returns
         -------
-        r_estimate : Array of estimated coordinates (in nm); localizations along axis 0 with x- and y-coordinates along axis 1
+        r_estimate : Array of estimated coordinates (in nm); localizations along axis 0 with x- and y-coordinates along axis 1.
         '''
         if beta is None: 
             beta = [1.27, 3.8]    #values from Balzarotti et al.
@@ -517,14 +517,14 @@ class MinfluxLocalization2D:
 
         Parameters
         ----------
-        localizations : specify or use saved localizations
-        k_fit : order of polynomial to fit
+        localizations : specify or use saved localizations.
+        k_fit : order of polynomial to fit.
         fit_separate : fit experiments separately or use the same polynomial for all.
 
         Returns
         -------
         loc_corrected : Drift-corrected localizations.
-        p_fit : Obtained polynomial parameters (p_k, p_{k-1}, ..., p_1, p_0)
+        p_fit : Obtained polynomial parameters (p_k, p_{k-1}, ..., p_1, p_0).
         '''
         if localizations is None:
             localizations = self.localizations
@@ -571,15 +571,15 @@ class MinfluxLocalization2D:
 
         Parameters
         ----------
-        k_on : minimum fraction in ON state to be detected as fiducials
-        k_exp : manually select experiment indices with fiducials; if none, use all
-        d_pos : distance at which subsequent localizations are registered as jumps rather than noise (in nm)
-        k_fit : degree of polynomial to fit to data
+        k_on : minimum fraction in ON state to be detected as fiducials.
+        k_exp : manually select experiment indices with fiducials; if none, use all.
+        d_pos : distance at which subsequent localizations are registered as jumps rather than noise (in nm).
+        k_fit : degree of polynomial to fit to data.
 
         Returns
         -------
         loc_corr : Drift-corrected localizations.
-        p_fit_avg : Obtained polynomial parameters (p_k, p_{k-1}, ..., p_1, p_0)
+        p_fit_avg : Obtained polynomial parameters (p_k, p_{k-1}, ..., p_1, p_0).
         '''
         if localizations is None:
             localizations = self.localizations
@@ -644,11 +644,11 @@ class MinfluxLocalization2D:
 
         Parameters
         ----------
-        arr : array to crop
-        x0 : starting point on axis 0
-        y0 : starting point on axis 1
-        size_x : number of entries to keep along axis 0
-        size_y : number of entries to keep along axis 1
+        arr : array to crop.
+        x0 : starting point on axis 0.
+        y0 : starting point on axis 1.
+        size_x : number of entries to keep along axis 0.
+        size_y : number of entries to keep along axis 1.
 
         Returns
         -------
@@ -667,8 +667,8 @@ class MinfluxLocalization2D:
 
         Parameters
         ----------
-        p : grid of p-parameters
-        sbr : signal-to-background ratio
+        p : grid of p-parameters.
+        sbr : signal-to-background ratio.
 
         Returns
         -------

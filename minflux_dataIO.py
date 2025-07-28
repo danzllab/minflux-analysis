@@ -15,12 +15,12 @@ class DataMinflux:
 
     Parameters
     ----------
-    parameters : minflux-parameters object.
-    n_cols : number of saved columns per minflux cycle in raw data file
-    cols_counts : specifies range of columns containing photon counts
-    col_tile : column containing index of tip/tilt mirror position
-    n_read : how many minflux-cycles to read; negative values read entire file
-    offset : how many lines to skip at beginning of file (corresponding to metadata, depends on file format)
+    parameters : minflux parameter profile;
+    n_cols : number of saved columns per minflux cycle in raw data file.
+    cols_counts : specifies range of columns containing photon counts.
+    col_tile : column containing index of tip/tilt mirror position.
+    n_read : how many minflux-cycles to read; negative values read entire file.
+    offset : how many lines to skip at beginning of file (corresponding to metadata, depends on file format).
 
     '''
     def __init__(self, parameters, n_cols=7, cols_counts=[0, 4], col_tile=4, n_read=-1, offset=1080):
@@ -80,7 +80,7 @@ class DataMinflux:
 
         Parameters
         ----------
-        shape : shape of TCP; currently, only "circle" implemented
+        shape : shape of TCP; currently, only "circle" implemented.
         ind_center : index of column corresponding to central exposure; if None, it is assumed that all TCP exposures lie on cirle.
         '''
         if shape == 'circle': 
@@ -122,10 +122,10 @@ class DataMinflux:
        
         Parameters
         ----------
-        offset_range : range of offsets to test
-        n_cols : number of saved columns per minflux cycle in raw data file
-        cols_counts : specifies range of columns containing photon counts
-        counts_max : maximum count number for offset to be considered a hit
+        offset_range : range of offsets to test.
+        n_cols : number of saved columns per minflux cycle in raw data file.
+        cols_counts : specifies range of columns containing photon counts.
+        counts_max : maximum count number for offset to be considered a hit.
         '''
         for i in range(*offset_range):
             d = np.fromfile(self.parameters.file_name + ".4P_mfx", offset=i, count=n_cols*10, dtype=np.int64).reshape((-1,n_cols))  # for every offset in specified range, read first 10 iterations from file
