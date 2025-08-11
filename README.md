@@ -2,7 +2,7 @@
 
 ## Description
 
-Custom Python software package for processing and analysis of MINFLUX-data (Balzarotti _et al._, Science **355**, 606-612 (2017). DOI: [10.1126/science.aak9913](https://doi.org/10.1126/science.aak9913)).
+Custom Python software package for processing and analysis of MINFLUX-data (Balzarotti _et al._, Science **355**, 606-612 (2017). DOI: [10.1126/science.aak9913](https://doi.org/10.1126/science.aak9913)), developed to analyze 2D, non-iterative MINFLUX-data generated in the Danzl lab. It is intended for compatibility with in-house workflows, and may be adapted by other users for their needs. Code is provided as is without any warranties.
 The software package comprises the modules minflux_parameters, minflux_dataIO, minflux_psf, minflux_localization, minflux_visualization, and minflux_analysis. An example workflow is given in main.py:
 * First, load MINFLUX-parameter profile. All parameters are saved to a text file for documentation.
 * Load MINFLUX-data using minflux_dataIO, create a grid of tip/tilt mirror positions and time stamps.
@@ -42,8 +42,9 @@ Jakob Vorlaufer [@jvorlauf](http://github.com/jvorlauf)
 ## License
 
 This project is licensed under the GNU Affero General Public License v3.0 - see the LICENSE.md file for details.
+Copyright holder: Institute of Science and Technology Austria.
 
 ## Acknowledgments
 
-Thanks to Marek Šuplata and Julia Lyudchik for intellectual input.
+Thanks to Marek Šuplata and Julia Lyudchik for advice on software design.
 
