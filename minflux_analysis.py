@@ -129,7 +129,7 @@ class MinfluxAnalysisBeadSample:
 
     def fft_localizations(self, localizations=None, average_dims=False, f_lim=None, 
                           log_x=False, log_y=True):
-        '''TO BE IMPLEMENTED'''
+        '''ATTENTION - ONLY PARTIALLY IMPLEMENTED'''
         if localizations is None:
             localizations = self.data.localizations
             
